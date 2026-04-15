@@ -1036,7 +1036,7 @@
       "examples": ["cpu"]
     },
     "tracing": {
-      "$ref": "https://raw.githubusercontent.com/ory/hydra/32280ba2/oryx/otelx/config.schema.json"
+      "$ref": "https://raw.githubusercontent.com/ory/hydra/ef2b6feb/oryx/otelx/config.schema.json"
     },
     "sqa": {
       "type": "object",
@@ -1102,6 +1102,38 @@
           "items": { "type": "string" },
           "default": ["openid_credential"],
           "description": "Supported authorization_details type values."
+        }
+      }
+    },
+    "dpop": {
+      "type": "object",
+      "description": "Configures DPoP (RFC 9449) token binding support.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable DPoP (RFC 9449) token binding support."
+        },
+        "signing_alg_values_supported": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["ES256"],
+          "description": "Supported JWS algorithms for DPoP proof JWTs."
+        },
+        "nonce_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable DPoP nonce exchange for replay protection."
+        },
+        "nonce_lifespan": {
+          "type": "string",
+          "default": "5m",
+          "description": "Lifespan of DPoP nonces."
+        },
+        "proof_max_age": {
+          "type": "string",
+          "default": "60s",
+          "description": "Maximum age for DPoP proof iat claim."
         }
       }
     },
