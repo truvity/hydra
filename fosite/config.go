@@ -343,3 +343,19 @@ type HAIPConfigProvider interface {
 	// GetHAIPEnforced returns whether HAIP enforcement is enabled.
 	GetHAIPEnforced(ctx context.Context) bool
 }
+
+// OIDC4VCI extension
+type DPoPConfigProvider interface {
+	// GetDPoPEnabled returns whether DPoP (RFC 9449) token binding is enabled.
+	GetDPoPEnabled(ctx context.Context) bool
+	// GetDPoPSigningAlgValuesSupported returns the supported DPoP proof signing algorithms.
+	GetDPoPSigningAlgValuesSupported(ctx context.Context) []string
+	// GetDPoPNonceEnabled returns whether DPoP nonce exchange is enabled.
+	GetDPoPNonceEnabled(ctx context.Context) bool
+	// GetDPoPNonceLifespan returns the lifespan of DPoP server nonces.
+	GetDPoPNonceLifespan(ctx context.Context) time.Duration
+	// GetDPoPProofMaxAge returns the maximum age for DPoP proof iat claims.
+	GetDPoPProofMaxAge(ctx context.Context) time.Duration
+	// GetDPoPPARURLs returns the PAR endpoint URLs for DPoP htu validation.
+	GetDPoPPARURLs(ctx context.Context) []string
+}

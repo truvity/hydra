@@ -26,6 +26,7 @@ import (
 	"github.com/ory/hydra/v2/driver/config"
 	"github.com/ory/hydra/v2/flow"
 	"github.com/ory/hydra/v2/fosite"
+	"github.com/ory/hydra/v2/fosite/handler/dpop"
 	"github.com/ory/hydra/v2/fosite/handler/openid"
 	"github.com/ory/hydra/v2/fosite/token/jwt"
 	"github.com/ory/hydra/v2/x"
@@ -61,6 +62,7 @@ const (
 
 	DeviceAuthPath         = "/oauth2/device/auth"
 	DeviceVerificationPath = "/oauth2/device/verify"
+	PushedAuthorizePath    = "/oauth2/par"
 )
 
 // Taken from https://github.com/ory/hydra/v2/fosite/blob/049ed1924cd0b41f12357b0fe617530c264421ac/handler/openid/flow_explicit_auth.go#L29
@@ -126,6 +128,9 @@ func (h *Handler) SetPublicRoutes(public *httprouterx.RouterPublic, corsMiddlewa
 
 	public.POST(DeviceAuthPath, h.oAuth2DeviceFlow)
 	public.GET(DeviceVerificationPath, h.performOAuth2DeviceVerificationFlow)
+
+	public.Handler("OPTIONS", PushedAuthorizePath, corsMiddleware(http.HandlerFunc(h.handleOptions)))
+	public.Handler("POST", PushedAuthorizePath, corsMiddleware(http.HandlerFunc(h.oAuth2PushedAuthorize)))
 }
 
 func (h *Handler) SetAdminRoutes(admin *httprouterx.RouterAdmin) {
@@ -1179,9 +1184,17 @@ func (h *Handler) oauth2TokenExchange(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	session := NewSessionWithCustomClaims(ctx, h.c, "")
 
+	// OIDC4VCI extension: DPoP header injection and nonce delivery
+	var dpopNonce string
+	ctx = context.WithValue(ctx, dpop.DPoPNonceContextKey, &dpopNonce)
+	dpop.InjectDPoPHeader(r)
+
 	accessRequest, err := h.r.OAuth2Provider().NewAccessRequest(ctx, r, session)
 	if err != nil {
 		x.LogError(r, err, h.r.Logger())
+		if dpopNonce != "" {
+			w.Header().Set("DPoP-Nonce", dpopNonce)
+		}
 		h.r.OAuth2Provider().WriteAccessError(ctx, w, accessRequest, err)
 		// NewAccessRequest sometimes returns the accessRequest even if an error occurs
 		// If that is the case, we want to log it to get information about the client
@@ -1201,6 +1214,9 @@ func (h *Handler) oauth2TokenExchange(w http.ResponseWriter, r *http.Request) {
 			accessTokenKeyID, err = h.r.AccessTokenJWTSigner().GetPublicKeyID(ctx)
 			if err != nil {
 				x.LogError(r, err, h.r.Logger())
+				if dpopNonce != "" {
+					w.Header().Set("DPoP-Nonce", dpopNonce)
+				}
 				h.r.OAuth2Provider().WriteAccessError(ctx, w, accessRequest, err)
 				events.Trace(ctx, events.TokenExchangeError, events.WithRequest(accessRequest), events.WithError(err))
 				return
@@ -1253,6 +1269,9 @@ func (h *Handler) oauth2TokenExchange(w http.ResponseWriter, r *http.Request) {
 	for _, hook := range h.r.AccessRequestHooks() {
 		if err := hook(ctx, accessRequest); err != nil {
 			x.LogError(r, err, h.r.Logger())
+			if dpopNonce != "" {
+				w.Header().Set("DPoP-Nonce", dpopNonce)
+			}
 			h.r.OAuth2Provider().WriteAccessError(ctx, w, accessRequest, err)
 			events.Trace(ctx, events.TokenExchangeError, events.WithRequest(accessRequest), events.WithError(err))
 			return
@@ -1265,12 +1284,59 @@ func (h *Handler) oauth2TokenExchange(w http.ResponseWriter, r *http.Request) {
 		return err
 	}); err != nil {
 		x.LogError(r, err, h.r.Logger())
+		if dpopNonce != "" {
+			w.Header().Set("DPoP-Nonce", dpopNonce)
+		}
 		h.r.OAuth2Provider().WriteAccessError(ctx, w, accessRequest, err)
 		events.Trace(ctx, events.TokenExchangeError, events.WithRequest(accessRequest), events.WithError(err))
 		return
 	}
 
+	if dpopNonce != "" {
+		w.Header().Set("DPoP-Nonce", dpopNonce)
+	}
 	h.r.OAuth2Provider().WriteAccessResponse(ctx, w, accessRequest, accessResponse)
+}
+
+// swagger:route POST /oauth2/par oAuth2 oAuth2PushedAuthorize
+//
+// # OAuth 2.0 Pushed Authorization Request (PAR)
+//
+// This endpoint handles Pushed Authorization Requests per RFC 9126.
+//
+//	Consumes:
+//	- application/x-www-form-urlencoded
+//
+//	Schemes: http, https
+//
+//	Responses:
+//	  201: pushAuthorizeResponse
+//	  default: errorOAuth2
+//
+//	Extensions:
+//	  x-ory-ratelimit-bucket: hydra-public-medium
+func (h *Handler) oAuth2PushedAuthorize(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// OIDC4VCI extension: DPoP header injection for PAR
+	dpop.InjectDPoPHeader(r)
+
+	ar, err := h.r.OAuth2Provider().NewPushedAuthorizeRequest(ctx, r)
+	if err != nil {
+		x.LogError(r, err, h.r.Logger())
+		h.r.OAuth2Provider().WritePushedAuthorizeError(ctx, w, ar, err)
+		return
+	}
+
+	session := NewSessionWithCustomClaims(ctx, h.c, "")
+	response, err := h.r.OAuth2Provider().NewPushedAuthorizeResponse(ctx, ar, session)
+	if err != nil {
+		x.LogError(r, err, h.r.Logger())
+		h.r.OAuth2Provider().WritePushedAuthorizeError(ctx, w, ar, err)
+		return
+	}
+
+	h.r.OAuth2Provider().WritePushedAuthorizeResponse(ctx, w, ar, response)
 }
 
 // swagger:route GET /oauth2/auth oAuth2 oAuth2Authorize

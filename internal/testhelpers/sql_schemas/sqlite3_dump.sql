@@ -1,4 +1,4 @@
--- migrations hash: b8bb0921f516c65ab24d1bd45fac43485b6b7f30a81736ab23e5012e40e5e9d9aad5cfdadb98bc627f8e1ef8a5b08eaa6b41cc5fd3e095e1e08027cd04329e52
+-- migrations hash: ebb08bda109d7442c28a0d87c30934e99fd9995ea22f4955ff21231a8889593a4afd3317e542ea2549631040aa3f44618b02884840a0ede826ce682a8ccfc9c0
 
 CREATE TABLE "hydra_client"
 (
@@ -147,6 +147,13 @@ CREATE INDEX hydra_oauth2_device_auth_codes_challenge_id_idx ON hydra_oauth2_dev
 CREATE INDEX hydra_oauth2_device_auth_codes_client_id_idx ON hydra_oauth2_device_auth_codes (client_id, nid);
 CREATE INDEX hydra_oauth2_device_auth_codes_request_id_idx ON hydra_oauth2_device_auth_codes (request_id, nid);
 CREATE UNIQUE INDEX hydra_oauth2_device_auth_codes_user_code_signature_idx ON hydra_oauth2_device_auth_codes (nid, user_code_signature);
+CREATE TABLE hydra_oauth2_dpop_jti (
+    jti         VARCHAR(255) NOT NULL,
+    nid         UUID         NOT NULL,
+    used_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at  TIMESTAMP    NOT NULL,
+    PRIMARY KEY (jti, nid)
+);
 CREATE TABLE "hydra_oauth2_flow" (
   login_challenge               VARCHAR(40)   NOT NULL PRIMARY KEY,
   nid                           CHAR(36)      NOT NULL,
@@ -319,6 +326,7 @@ CREATE TABLE "hydra_oauth2_trusted_jwt_bearer_issuer" (
 );
 CREATE INDEX hydra_oauth2_trusted_jwt_bearer_issuer_expires_at_idx ON hydra_oauth2_trusted_jwt_bearer_issuer (expires_at);
 CREATE UNIQUE INDEX hydra_oauth2_trusted_jwt_bearer_issuer_nid_uq_idx ON hydra_oauth2_trusted_jwt_bearer_issuer (nid ASC, key_id ASC, issuer ASC, subject ASC);
+CREATE INDEX idx_dpop_jti_expires_at ON hydra_oauth2_dpop_jti (nid, expires_at);
 CREATE TABLE "networks" (
   "id" TEXT PRIMARY KEY,
   "created_at" DATETIME NOT NULL,

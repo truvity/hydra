@@ -32,6 +32,7 @@ import (
 	"github.com/ory/hydra/v2/fosite/handler/pkce"
 	"github.com/ory/hydra/v2/fosite/handler/rfc7523"
 	"github.com/ory/hydra/v2/fosite/handler/rfc8628"
+	"github.com/ory/hydra/v2/fosite/handler/dpop"
 	"github.com/ory/hydra/v2/fosite/handler/verifiable"
 	"github.com/ory/hydra/v2/fosite/token/hmac"
 	"github.com/ory/hydra/v2/fositex"
@@ -162,6 +163,12 @@ func (m *RegistrySQL) RFC7523KeyStorage() rfc7523.RFC7523KeyStorage {
 // NonceManager implements verifiable.NonceManager
 func (m *RegistrySQL) NonceManager() verifiable.NonceManager {
 	return m.OAuth2Storage()
+}
+
+// DPoPNonceStorage returns the DPoP nonce storage, backed by the SQL persister.
+// OIDC4VCI extension
+func (m *RegistrySQL) DPoPNonceStorage() dpop.DPoPNonceStorage {
+	return m.Persister().(dpop.DPoPNonceStorage)
 }
 
 // defaultInitialPing is the default function that will be called within RegistrySQL.Init to make sure
@@ -550,6 +557,9 @@ func (m *RegistrySQL) ExtraFositeFactories() []fositex.Factory {
 	// OIDC4VCI extension
 	if m.Config().GetRAREnabled(context.TODO()) {
 		factories = append(factories, compose.RARFactory)
+	}
+	if m.Config().GetDPoPEnabled(context.TODO()) {
+		factories = append(factories, compose.DPoPFactory)
 	}
 
 	return factories

@@ -54,9 +54,10 @@ type (
 )
 
 var (
-	_ fosite.RARConfigProvider                 = (*Config)(nil)
-	_ fosite.HAIPConfigProvider                = (*Config)(nil)
+	_ fosite.RARConfigProvider                      = (*Config)(nil)
+	_ fosite.HAIPConfigProvider                     = (*Config)(nil)
 	_ fosite.PushedAuthorizeRequestHandlersProvider = (*Config)(nil) // OIDC4VCI extension
+	_ fosite.DPoPConfigProvider                     = (*Config)(nil) // OIDC4VCI extension
 
 	defaultResponseModeHandler = fosite.NewDefaultResponseModeHandler()
 	defaultFactories           = []Factory{

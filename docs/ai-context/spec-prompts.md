@@ -17,7 +17,7 @@ Spec 5: oidc4vci-haip-metadata (capstone — depends on all above)
 
 ---
 
-## Spec 1: `oidc4vci-rar-consent`
+## Spec 1: `oidc4vci-rar-consent` (IMPLEMENTED `.kiro/specs/oidc4vci-rar-consent`)
 
 ### Prompt
 
@@ -98,60 +98,97 @@ Create a Kiro spec named "oidc4vci-dpop" for implementing DPoP (Demonstrating Pr
 
 ## Prerequisites
 
-Spec 1 (oidc4vci-rar-consent) MUST be completed first. It provides:
-- Config infrastructure (provider interface pattern, `HAIPConfigProvider`)
-- Session.Extra propagation patterns established
+Spec 1 (oidc4vci-rar-consent) is COMPLETED. It established:
+- Config provider interface pattern: define interface in `fosite/config.go`, embed in `Configurator` in `fosite/fosite.go`, implement on `DefaultProvider` in `driver/config/provider.go`, add schema to `spec/config.json`. `fositex.Config` embeds `*config.DefaultProvider` so new provider methods are inherited automatically.
+- Factory registration pattern: define factory in `fosite/compose/compose_*.go`, register in `driver/registry_sql.go` via `ExtraFositeFactories()` gated by config flag. `fositex.Config.LoadDefaultHandlers` already handles type assertions for `AuthorizeEndpointHandler`, `TokenEndpointHandler`, `TokenIntrospector`, `RevocationHandler`, `DeviceEndpointHandler`, and `PushedAuthorizeEndpointHandler`.
+- Error constant pattern: define as `var Err* = &fosite.RFC6749Error{...}` in handler package `errors.go` file.
+- Session.Extra propagation: data stored in `session.Extra` flows to token response (via `responder.SetExtra`), introspection (via `Introspection.Extra` → JSON `"ext"`), refresh token exchange (preserved across serialization), and Token Hook.
+- Introspection path: Hydra's admin introspection endpoint maps `session.Extra` → `Introspection.Extra` (JSON key `"ext"`). Custom data like `cnf.jkt` will appear at `ext.cnf.jkt` in the introspection response. Refer to `.kiro/steering/introspection-context.md` for the two introspection paths.
+- `PopulateTokenEndpointResponse` pattern: called on ALL registered `TokenEndpointHandler` implementations during response phase regardless of `CanHandleTokenEndpointRequest` result. Must return `fosite.ErrUnknownRequest` when not responsible.
+- Compile-time interface checks: `var _ fosite.TokenEndpointHandler = (*Handler)(nil)` in handler files.
+- Copyright header: `// Copyright © 2026 Ory Corp` + `// SPDX-License-Identifier: Apache-2.0`
 
 ## Scope
 
 This spec covers:
 1. DPoP handler (`fosite/handler/dpop/`) implementing `TokenEndpointHandler` and `PushedAuthorizeEndpointHandler`
-2. Full RFC 9449 §4.3 proof validation checklist (12 checks)
-3. DPoP token binding: compute `jkt` (JWK Thumbprint per RFC 7638), store as `cnf.jkt` in session, set `token_type=DPoP`
-4. DPoP nonce exchange: `DPoP-Nonce` header, `use_dpop_nonce` error
-5. JTI replay detection via `DPoPNonceStorage`
+2. Full RFC 9449 §4.3 proof validation checklist (12 checks) — this is the most complex validation logic in the OIDC4VCI feature set
+3. DPoP token binding: compute `jkt` (JWK Thumbprint per RFC 7638), store as `cnf.jkt` in `session.Extra["cnf"]`, set `token_type=DPoP`
+4. DPoP nonce exchange: `DPoP-Nonce` response header, `use_dpop_nonce` error with fresh nonce in header
+5. JTI replay detection via `DPoPNonceStorage` interface
 6. Authorization code binding via `dpop_jkt` parameter (RFC 9449 §10) and DPoP header on PAR requests (§10.1)
-7. Refresh token DPoP binding for public clients (RFC 9449 §5)
+7. Refresh token DPoP binding for public clients (RFC 9449 §5) — confidential clients NOT bound
 8. DPoP config provider interface and config keys (`KeyDPoPEnabled`, `KeyDPoPSigningAlgValues`, `KeyDPoPNonceEnabled`, `KeyDPoPNonceLifespan`)
 9. DPoP compose factory (`fosite/compose/compose_dpop.go`)
-10. New error constants: `ErrInvalidDPoPProof`, `ErrUseDPoPNonce`
-11. Storage interface `DPoPNonceStorage` and DB table `hydra_oauth2_dpop_jti`
-12. Database migration for `hydra_oauth2_dpop_jti`
-13. SQL persistence implementation in `persistence/sql/`
-14. Feature documentation in `docs/features/` describing what was implemented, configuration options, proof validation checklist, error codes, nonce exchange flow, and references to RFC 9449 and design docs
+10. New error constants: `ErrInvalidDPoPProof` (`invalid_dpop_proof`, HTTP 400), `ErrUseDPoPNonce` (`use_dpop_nonce`, HTTP 400)
+11. Storage interface `DPoPNonceStorage` with methods: `IsJTIUsed`, `MarkJTIUsed`, `CreateDPoPNonce`, `ValidateDPoPNonce`
+12. DB table `hydra_oauth2_dpop_jti` (jti PK, nid UUID, used_at TIMESTAMP, expires_at TIMESTAMP) with index on `(nid, expires_at)`
+13. Database migration for `hydra_oauth2_dpop_jti` — additive table, no upstream conflict
+14. SQL persistence implementation in `persistence/sql/` — implement `DPoPNonceStorage` on `Persister`
+15. Feature documentation in `docs/features/dpop.md` describing what was implemented, configuration options, proof validation checklist, error codes, nonce exchange flow, and references to RFC 9449 and design docs
 
 ## Key Design References
 
 Read these documents for authoritative design details:
-- #[[file:docs/ai-context/features/feature-dpop.md]] — Full DPoP handler design, storage interface, PAR integration, refresh token binding
-- #[[file:docs/ai-context/01-hydra-internal-design.md]] — TokenEndpointHandler interface, compose factory pattern
-- #[[file:docs/ai-context/03-issuer-integration-boundary.md]] — DPoP jkt confirmation chain
-- #[[file:docs/ai-context/04-fork-maintenance-strategy.md]] — DB migration strategy, isolated handler directory
+- #[[file:docs/ai-context/features/feature-dpop.md]] — Full DPoP handler design, storage interface, PAR integration, refresh token binding, all 12 proof validation checks
+- #[[file:docs/ai-context/01-hydra-internal-design.md]] — TokenEndpointHandler interface, compose factory pattern, Session struct
+- #[[file:docs/ai-context/03-issuer-integration-boundary.md]] — DPoP jkt confirmation chain from AS to Credential Issuer via introspection
+- #[[file:docs/ai-context/04-fork-maintenance-strategy.md]] — DB migration strategy, isolated handler directory, new table naming
 - #[[file:docs/ai-context/02-oidc4vci-as-requirements.md]] — Requirements H1, H6
-- #[[file:docs/ai-context/features/feature-par.md]] — DPoP at PAR endpoint (dpop_jkt binding)
+- #[[file:docs/ai-context/features/feature-par.md]] — DPoP at PAR endpoint (dpop_jkt binding, §10.1)
+- #[[file:docs/oidc4vci/rfc/oauth2-dpop-rfc9449.md]] — Full RFC 9449 text for proof validation checklist details
+- #[[file:.kiro/steering/introspection-context.md]] — How session.Extra flows to introspection response (ext.cnf.jkt path)
+
+Also reference the completed RAR spec for implementation patterns:
+- #[[file:fosite/handler/rar/handler.go]] — Handler struct pattern, compile-time interface checks, shared validation helper
+- #[[file:fosite/handler/rar/token_handler.go]] — TokenEndpointHandler implementation pattern, PopulateTokenEndpointResponse with ErrUnknownRequest
+- #[[file:fosite/handler/rar/errors.go]] — Error constant definition pattern
+- #[[file:fosite/compose/compose_rar.go]] — Factory pattern
+- #[[file:docs/features/rar-consent.md]] — Feature documentation pattern
 
 ## Requirements Covered
 
+From the parent requirements document (.kiro/specs/oidc4vci-as-capabilities/requirements.md):
 - Requirement 4: DPoP (4.1–4.10)
 - Requirement 14: ES256 Algorithm Support (14.1)
 
 ## Correctness Properties
 
+From the parent design document (.kiro/specs/oidc4vci-as-capabilities/design.md):
 - Property 12: DPoP Binding and Token Type
-- Property 13: DPoP Proof Validation
+- Property 13: DPoP Proof Validation (covers all 12 RFC 9449 §4.3 checks)
 - Property 14: DPoP Nonce Exchange
+
+Additional properties to define in this spec's design:
+- dpop_jkt authorization code binding (RFC 9449 §10)
+- Refresh token DPoP binding for public clients vs confidential clients (RFC 9449 §5)
+- JTI replay detection
+- DPoP-Nonce header presence on error and success responses
 
 ## Implementation Constraints
 
-- Cross-cutting handler: `CanHandleTokenEndpointRequest` returns true when `DPoP` header present (not grant-type specific)
-- `CanSkipClientAuth` always returns false
-- Handler also implements `PushedAuthorizeEndpointHandler` for dpop_jkt extraction
-- ES256 MUST be in default `dpop_signing_alg_values_supported`
-- New handler in `fosite/handler/dpop/` — isolated from upstream
-- New DB table `hydra_oauth2_dpop_jti` with `nid` column for multi-tenancy
+- Cross-cutting handler: `CanHandleTokenEndpointRequest` returns true when `DPoP` header present in the HTTP request (not grant-type specific — decorates all grant types)
+- `CanSkipClientAuth` always returns false — DPoP is token binding, not client authentication
+- Handler also implements `PushedAuthorizeEndpointHandler` for dpop_jkt extraction at PAR endpoint
+- ES256 MUST be in default `dpop_signing_alg_values_supported` list
+- New handler in `fosite/handler/dpop/` — isolated from upstream, no merge conflict risk
+- New DB table `hydra_oauth2_dpop_jti` with `nid` column for multi-tenancy (additive, no upstream conflict)
 - Register factory in `driver/registry_sql.go` via `ExtraFositeFactories()`, gated by `KeyDPoPEnabled`
-- Use `pgregory.net/rapid` for property-based tests
-- As a final task, create `docs/features/dpop.md` documenting the implemented feature: what it does, configuration keys and defaults, DPoP proof validation checklist, error codes, nonce exchange, dpop_jkt binding, refresh token binding rules, and references to RFC 9449 and the design docs in `docs/ai-context/`
+- Storage interface `DPoPNonceStorage` must be added to `persistence.Persister` aggregate interface
+- New storage accessor `DPoPNonceStorage()` on `RegistrySQL` with lazy initialization pattern
+- Use `pgregory.net/rapid` for property-based tests, minimum 100 iterations per property
+- The DPoP handler needs access to the HTTP request headers (for the `DPoP` header) — verify how to access raw HTTP headers from `fosite.AccessRequester` (may need to pass via request context or form)
+- `DPoP-Nonce` response header must be set BEFORE returning the error, so the HTTP response writer includes it — the handler must have access to the `http.ResponseWriter` or use a mechanism to attach headers to the error response
+- As a final task, create `docs/features/dpop.md` documenting the implemented feature: what it does, configuration keys and defaults, DPoP proof validation checklist (all 12 checks), error codes, nonce exchange flow, dpop_jkt binding, refresh token binding rules (public vs confidential clients), introspection path (`ext.cnf.jkt`), and references to RFC 9449 and the design docs in `docs/ai-context/`
+
+## Design Considerations to Address
+
+The design phase should explicitly address these implementation questions:
+1. How does the DPoP handler access the raw `DPoP` HTTP header? Fosite handlers receive `AccessRequester` which wraps the parsed form — the raw HTTP request may need to be passed via context or a custom interface.
+2. How does the handler set the `DPoP-Nonce` response header? Fosite's error handling writes the response — the handler needs a mechanism to attach headers to error responses (e.g., via a custom error type that carries headers, or via response writer access).
+3. Where is the `dpop_jkt` stored during PAR processing so it's available at the token endpoint? It needs to survive the PAR session → authorize request → token request lifecycle.
+4. How does the handler detect public vs confidential clients for refresh token binding (RFC 9449 §5)?
+5. What JWT library to use for DPoP proof parsing and validation? The project already uses `fosite/token/jwt` — verify it supports the needed operations (parse with explicit key from `jwk` header, validate `typ`, extract claims).
 ```
 
 ---

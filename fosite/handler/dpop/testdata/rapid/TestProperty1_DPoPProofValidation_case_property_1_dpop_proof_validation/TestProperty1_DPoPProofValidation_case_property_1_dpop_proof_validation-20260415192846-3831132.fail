@@ -1,0 +1,19 @@
+# 2026/04/15 19:28:46.778669 [TestProperty1_DPoPProofValidation/case=property_1_dpop_proof_validation] [rapid] draw corruption: 1
+# 2026/04/15 19:28:46.778675 [TestProperty1_DPoPProofValidation/case=property_1_dpop_proof_validation] [rapid] draw badTyp: ""
+# 2026/04/15 19:28:46.778912 [TestProperty1_DPoPProofValidation/case=property_1_dpop_proof_validation] 
+# 	Error Trace:	/home/roman/git/hydra/fosite/handler/dpop/handler_test.go:355
+# 	            				/home/roman/git/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:371
+# 	            				/home/roman/git/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:380
+# 	            				/home/roman/git/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:205
+# 	            				/home/roman/git/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:120
+# 	            				/home/roman/git/hydra/fosite/handler/dpop/handler_test.go:266
+# 	Error:      	An error is expected but got nil.
+# 	Test:       	TestProperty1_DPoPProofValidation/case=property_1_dpop_proof_validation
+# 	Messages:   	corrupted DPoP proof (corruption=1) should be rejected
+# 
+v0.4.8#13012184266562250501
+0x0
+0x0
+0x1
+0x38e38e38e38e4
+0x3

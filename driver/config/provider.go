@@ -122,9 +122,14 @@ const (
 	KeyDevelopmentMode                           = "dev"
 
 	// OIDC4VCI extension
-	KeyRAREnabled       = "rar.enabled"
-	KeyRARTypesSupported = "rar.types_supported"
-	KeyHAIPEnforced     = "haip.enforced"
+	KeyRAREnabled            = "rar.enabled"
+	KeyRARTypesSupported     = "rar.types_supported"
+	KeyHAIPEnforced          = "haip.enforced"
+	KeyDPoPEnabled           = "dpop.enabled"
+	KeyDPoPSigningAlgValues  = "dpop.signing_alg_values_supported"
+	KeyDPoPNonceEnabled      = "dpop.nonce_enabled"
+	KeyDPoPNonceLifespan     = "dpop.nonce_lifespan"
+	KeyDPoPProofMaxAge       = "dpop.proof_max_age"
 )
 
 const DSNMemory = "memory"
@@ -823,4 +828,31 @@ func (p *DefaultProvider) GetRARTypesSupported(ctx context.Context) []string {
 
 func (p *DefaultProvider) GetHAIPEnforced(ctx context.Context) bool {
 	return p.getProvider(ctx).Bool(KeyHAIPEnforced)
+}
+
+func (p *DefaultProvider) GetDPoPEnabled(ctx context.Context) bool {
+	return p.getProvider(ctx).Bool(KeyDPoPEnabled)
+}
+
+func (p *DefaultProvider) GetDPoPSigningAlgValuesSupported(ctx context.Context) []string {
+	return p.getProvider(ctx).StringsF(KeyDPoPSigningAlgValues, []string{"ES256"})
+}
+
+func (p *DefaultProvider) GetDPoPNonceEnabled(ctx context.Context) bool {
+	return p.getProvider(ctx).Bool(KeyDPoPNonceEnabled)
+}
+
+func (p *DefaultProvider) GetDPoPNonceLifespan(ctx context.Context) time.Duration {
+	return p.getProvider(ctx).DurationF(KeyDPoPNonceLifespan, 5*time.Minute)
+}
+
+func (p *DefaultProvider) GetDPoPProofMaxAge(ctx context.Context) time.Duration {
+	return p.getProvider(ctx).DurationF(KeyDPoPProofMaxAge, 60*time.Second)
+}
+
+func (p *DefaultProvider) GetDPoPPARURLs(ctx context.Context) []string {
+	return stringslice.Unique([]string{
+		urlx.AppendPaths(p.PublicURL(ctx), "/oauth2/par").String(),
+		urlx.AppendPaths(p.IssuerURL(ctx), "/oauth2/par").String(),
+	})
 }

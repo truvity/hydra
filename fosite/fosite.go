@@ -153,6 +153,7 @@ type Configurator interface {
 	// OIDC4VCI extension
 	RARConfigProvider
 	HAIPConfigProvider
+	DPoPConfigProvider
 }
 
 func NewOAuth2Provider(s Storage, c Configurator) *Fosite {

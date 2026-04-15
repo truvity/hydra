@@ -577,3 +577,27 @@ func (c *Config) GetRARTypesSupported(_ context.Context) []string {
 func (c *Config) GetHAIPEnforced(_ context.Context) bool {
 	return false
 }
+
+func (c *Config) GetDPoPEnabled(_ context.Context) bool {
+	return false
+}
+
+func (c *Config) GetDPoPSigningAlgValuesSupported(_ context.Context) []string {
+	return []string{"ES256"}
+}
+
+func (c *Config) GetDPoPNonceEnabled(_ context.Context) bool {
+	return false
+}
+
+func (c *Config) GetDPoPNonceLifespan(_ context.Context) time.Duration {
+	return 5 * time.Minute
+}
+
+func (c *Config) GetDPoPProofMaxAge(_ context.Context) time.Duration {
+	return 60 * time.Second
+}
+
+func (c *Config) GetDPoPPARURLs(_ context.Context) []string {
+	return nil
+}
