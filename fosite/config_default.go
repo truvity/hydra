@@ -563,3 +563,17 @@ func (c *Config) GetUserCodeSymbols(ctx context.Context) []rune {
 	}
 	return c.UserCodeSymbols
 }
+
+// OIDC4VCI extension
+
+func (c *Config) GetRAREnabled(_ context.Context) bool {
+	return false
+}
+
+func (c *Config) GetRARTypesSupported(_ context.Context) []string {
+	return []string{"openid_credential"}
+}
+
+func (c *Config) GetHAIPEnforced(_ context.Context) bool {
+	return false
+}

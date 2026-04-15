@@ -459,6 +459,9 @@ type oidcConfiguration struct {
 	//
 	// JSON array containing a list of the Verifiable Credentials supported by this authorization server.
 	CredentialsSupportedDraft00 []CredentialSupportedDraft00 `json:"credentials_supported_draft_00"`
+
+	// OIDC4VCI extension
+	AuthorizationDetailsTypesSupported []string `json:"authorization_details_types_supported,omitempty"`
 }
 
 // Verifiable Credentials Metadata (Draft 00)
@@ -515,7 +518,7 @@ func (h *Handler) discoverOidcConfiguration(w http.ResponseWriter, r *http.Reque
 		h.r.Writer().WriteError(w, r, err)
 		return
 	}
-	h.r.Writer().Write(w, r, &oidcConfiguration{
+	cfg := &oidcConfiguration{
 		Issuer:                                 h.c.IssuerURL(ctx).String(),
 		AuthURL:                                h.c.OAuth2AuthURL(ctx).String(),
 		DeviceAuthorizationURL:                 h.c.OAuth2DeviceAuthorisationURL(ctx).String(),
@@ -557,7 +560,14 @@ func (h *Handler) discoverOidcConfiguration(w http.ResponseWriter, r *http.Reque
 				"EdDSA",
 			},
 		}},
-	})
+	}
+
+	// OIDC4VCI extension
+	if h.c.GetRAREnabled(ctx) {
+		cfg.AuthorizationDetailsTypesSupported = h.c.GetRARTypesSupported(ctx)
+	}
+
+	h.r.Writer().Write(w, r, cfg)
 }
 
 // OpenID Connect Userinfo
@@ -1463,6 +1473,18 @@ func (h *Handler) updateSessionWithRequest(
 	}}
 	session.DefaultSession.Subject = flow.Subject
 	session.Extra = flow.SessionAccessToken
+
+	// OIDC4VCI extension: merge consent authorization_details into session.Extra
+	if len(flow.ConsentAuthorizationDetails) > 0 {
+		var authDetails []interface{}
+		if err := json.Unmarshal(flow.ConsentAuthorizationDetails, &authDetails); err == nil && len(authDetails) > 0 {
+			if session.Extra == nil {
+				session.Extra = make(map[string]interface{})
+			}
+			session.Extra["authorization_details"] = authDetails
+		}
+	}
+
 	session.KID = accessTokenKeyID
 	session.ClientID = request.GetClient().GetID()
 	session.ConsentChallenge = flow.ConsentRequestID.String()

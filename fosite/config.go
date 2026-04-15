@@ -329,3 +329,17 @@ type DeviceEndpointHandlersProvider interface {
 	// GetDeviceEndpointHandlers returns the handlers.
 	GetDeviceEndpointHandlers(ctx context.Context) DeviceEndpointHandlers
 }
+
+// OIDC4VCI extension
+type RARConfigProvider interface {
+	// GetRAREnabled returns whether Rich Authorization Requests (RFC 9396) support is enabled.
+	GetRAREnabled(ctx context.Context) bool
+	// GetRARTypesSupported returns the supported authorization_details type values.
+	GetRARTypesSupported(ctx context.Context) []string
+}
+
+// OIDC4VCI extension
+type HAIPConfigProvider interface {
+	// GetHAIPEnforced returns whether HAIP enforcement is enabled.
+	GetHAIPEnforced(ctx context.Context) bool
+}

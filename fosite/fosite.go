@@ -150,6 +150,9 @@ type Configurator interface {
 	DeviceEndpointHandlersProvider
 	UserCodeProvider
 	DeviceProvider
+	// OIDC4VCI extension
+	RARConfigProvider
+	HAIPConfigProvider
 }
 
 func NewOAuth2Provider(s Storage, c Configurator) *Fosite {

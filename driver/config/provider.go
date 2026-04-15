@@ -120,6 +120,11 @@ const (
 	KeyRefreshTokenHook                          = "oauth2.refresh_token_hook" // #nosec G101
 	KeyTokenHook                                 = "oauth2.token_hook"         // #nosec G101
 	KeyDevelopmentMode                           = "dev"
+
+	// OIDC4VCI extension
+	KeyRAREnabled       = "rar.enabled"
+	KeyRARTypesSupported = "rar.types_supported"
+	KeyHAIPEnforced     = "haip.enforced"
 )
 
 const DSNMemory = "memory"
@@ -804,4 +809,18 @@ func (p *DefaultProvider) GetPaginationEncryptionKeys(ctx context.Context) [][32
 		hashed[i] = sha512.Sum512_256([]byte(secrets[i]))
 	}
 	return hashed
+}
+
+// OIDC4VCI extension
+
+func (p *DefaultProvider) GetRAREnabled(ctx context.Context) bool {
+	return p.getProvider(ctx).Bool(KeyRAREnabled)
+}
+
+func (p *DefaultProvider) GetRARTypesSupported(ctx context.Context) []string {
+	return p.getProvider(ctx).StringsF(KeyRARTypesSupported, []string{"openid_credential"})
+}
+
+func (p *DefaultProvider) GetHAIPEnforced(ctx context.Context) bool {
+	return p.getProvider(ctx).Bool(KeyHAIPEnforced)
 }

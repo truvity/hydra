@@ -271,6 +271,11 @@ type Flow struct {
 	ConsentError       *RequestDeniedError      `db:"-" json:"cx"`
 	SessionIDToken     sqlxx.MapStringInterface `db:"session_id_token" faker:"-" json:"st"`
 	SessionAccessToken sqlxx.MapStringInterface `db:"session_access_token" faker:"-" json:"sa"`
+
+	// OIDC4VCI extension
+	AuthorizationDetails        sqlxx.JSONRawMessage `db:"authorization_details" json:"ad,omitempty"`
+	IssuerState                 string               `db:"issuer_state" json:"ist,omitempty"`
+	ConsentAuthorizationDetails sqlxx.JSONRawMessage `db:"consent_authorization_details" json:"cad,omitempty"`
 }
 
 // HandleDeviceUserAuthRequest updates the flows fields from a handled request.
@@ -405,6 +410,10 @@ func (f *Flow) HandleConsentRequest(r *AcceptOAuth2ConsentRequest) error {
 		f.SessionIDToken = r.Session.IDToken
 		f.SessionAccessToken = r.Session.AccessToken
 	}
+
+	// OIDC4VCI extension
+	f.ConsentAuthorizationDetails = r.AuthorizationDetails
+
 	return nil
 }
 
@@ -456,6 +465,9 @@ func (f *Flow) GetConsentRequest(challenge string) *OAuth2ConsentRequest {
 		ACR:                  f.ACR,
 		AMR:                  f.AMR,
 		Context:              f.Context,
+		// OIDC4VCI extension
+		AuthorizationDetails: f.AuthorizationDetails,
+		IssuerState:          f.IssuerState,
 	}
 	// set some defaults for the API
 	if cs.RequestedAudience == nil {

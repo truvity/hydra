@@ -265,6 +265,14 @@ func (s *defaultStrategy) forwardAuthenticationRequest(
 			State:                flow.FlowStateLoginUnused,
 			NID:                  s.r.Networker().NetworkID(ctx),
 		}
+
+		// OIDC4VCI extension: populate authorization_details and issuer_state from the request form
+		if ad := ar.GetRequestForm().Get("authorization_details"); ad != "" {
+			f.AuthorizationDetails = sqlxx.JSONRawMessage(ad)
+		}
+		if is := ar.GetRequestForm().Get("issuer_state"); is != "" {
+			f.IssuerState = is
+		}
 	} else {
 		// Device auth grant
 		f.ID = challenge

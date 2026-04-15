@@ -136,6 +136,9 @@ type AcceptOAuth2ConsentRequest struct {
 	// consent request under the "context" field. This is useful in scenarios where login and consent endpoints share
 	// data.
 	Context sqlxx.JSONRawMessage `json:"context"`
+
+	// OIDC4VCI extension
+	AuthorizationDetails sqlxx.JSONRawMessage `json:"authorization_details,omitempty" db:"consent_authorization_details"`
 }
 
 func (r *AcceptOAuth2ConsentRequest) MarshalJSON() ([]byte, error) {
@@ -625,6 +628,10 @@ type OAuth2ConsentRequest struct {
 
 	// Context contains arbitrary information set by the login endpoint or is empty if not set.
 	Context sqlxx.JSONRawMessage `json:"context,omitempty"`
+
+	// OIDC4VCI extension
+	AuthorizationDetails sqlxx.JSONRawMessage `json:"authorization_details,omitempty" db:"authorization_details"`
+	IssuerState          string               `json:"issuer_state,omitempty"          db:"issuer_state"`
 }
 
 func (r *OAuth2ConsentRequest) MarshalJSON() ([]byte, error) {

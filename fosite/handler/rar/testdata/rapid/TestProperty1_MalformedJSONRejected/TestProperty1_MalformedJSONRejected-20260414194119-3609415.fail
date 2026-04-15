@@ -1,0 +1,15 @@
+# 2026/04/14 19:41:19.326583 [TestProperty1_MalformedJSONRejected] [rapid] draw malformed: "null"
+# 2026/04/14 19:41:19.326633 [TestProperty1_MalformedJSONRejected] 
+# 	Error Trace:	/home/roman/git/hydra/fosite/handler/rar/handler_test.go:241
+# 	            				/home/roman/git/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:371
+# 	            				/home/roman/git/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:380
+# 	            				/home/roman/git/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:205
+# 	            				/home/roman/git/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:120
+# 	            				/home/roman/git/hydra/fosite/handler/rar/handler_test.go:222
+# 	Error:      	An error is expected but got nil.
+# 	Test:       	TestProperty1_MalformedJSONRejected
+# 	Messages:   	authorize should reject malformed JSON
+# 
+v0.4.8#285237608117298351
+0x6b74f03291620
+0x5

@@ -544,7 +544,15 @@ func (m *RegistrySQL) OAuth2Config() *fositex.Config {
 }
 
 func (m *RegistrySQL) ExtraFositeFactories() []fositex.Factory {
-	return m.fositeFactories
+	factories := make([]fositex.Factory, len(m.fositeFactories))
+	copy(factories, m.fositeFactories)
+
+	// OIDC4VCI extension
+	if m.Config().GetRAREnabled(context.TODO()) {
+		factories = append(factories, compose.RARFactory)
+	}
+
+	return factories
 }
 
 func (m *RegistrySQL) OAuth2ProviderConfig() fosite.Configurator {

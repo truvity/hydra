@@ -1,4 +1,4 @@
--- migrations hash: 36ad8390f65c43551e28df0dcf92b0fdeb823b774eecda791f5979deafce2f6cc6ff57fccdfa41cbaa4403fd4ced8a9dfd7b725d1bb51fd6b0fabdccd51338aa
+-- migrations hash: b8bb0921f516c65ab24d1bd45fac43485b6b7f30a81736ab23e5012e40e5e9d9aad5cfdadb98bc627f8e1ef8a5b08eaa6b41cc5fd3e095e1e08027cd04329e52
 
 CREATE TABLE "hydra_client"
 (
@@ -200,7 +200,7 @@ CREATE TABLE "hydra_oauth2_flow" (
   device_error                  VARCHAR(2048) NULL,
   expires_at                    TIMESTAMP GENERATED ALWAYS AS (IF(consent_remember_for > 0,
                                                                   datetime(requested_at, '+' || consent_remember_for || ' seconds'),
-                                                                  NULL)) VIRTUAL,
+                                                                  NULL)) VIRTUAL, authorization_details jsonb NULL, issuer_state VARCHAR(4096) NULL DEFAULT '', consent_authorization_details jsonb NULL,
 
   FOREIGN KEY (client_id, nid) REFERENCES hydra_client (id, nid) ON DELETE CASCADE
 );

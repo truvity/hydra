@@ -41,6 +41,9 @@ func (f *Flow) setConsentRequest(r OAuth2ConsentRequest) {
 	f.ACR = r.ACR
 	f.AMR = r.AMR
 	f.Context = r.Context
+	// OIDC4VCI extension
+	f.AuthorizationDetails = r.AuthorizationDetails
+	f.IssuerState = r.IssuerState
 }
 
 func TestFlow_HandleDeviceUserAuthRequest(t *testing.T) {

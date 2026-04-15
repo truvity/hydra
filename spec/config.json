@@ -1088,6 +1088,34 @@
       "description": "If true, disables critical security measures to allow easier local development. Do not use in production.",
       "default": false
     },
+    "rar": {
+      "type": "object",
+      "description": "Configures Rich Authorization Requests (RFC 9396) support.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Rich Authorization Requests (RFC 9396) support."
+        },
+        "types_supported": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["openid_credential"],
+          "description": "Supported authorization_details type values."
+        }
+      }
+    },
+    "haip": {
+      "type": "object",
+      "description": "Configures HAIP (High Assurance Interoperability Profile) settings.",
+      "properties": {
+        "enforced": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable HAIP enforcement (PAR required, PKCE S256 required). Infrastructure only — enforcement wired in oidc4vci-haip-metadata spec."
+        }
+      }
+    },
     "feature_flags": {
       "title": "Feature flags",
       "type": "object",

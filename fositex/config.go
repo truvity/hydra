@@ -38,12 +38,13 @@ type (
 	Config  struct {
 		deps configDependencies
 
-		authorizeEndpointHandlers  fosite.AuthorizeEndpointHandlers
-		tokenEndpointHandlers      fosite.TokenEndpointHandlers
-		tokenIntrospectionHandlers fosite.TokenIntrospectionHandlers
-		revocationHandlers         fosite.RevocationHandlers
-		deviceEndpointHandlers     fosite.DeviceEndpointHandlers
-		jwksFetcherStrategy        fosite.JWKSFetcherStrategy
+		authorizeEndpointHandlers       fosite.AuthorizeEndpointHandlers
+		tokenEndpointHandlers           fosite.TokenEndpointHandlers
+		tokenIntrospectionHandlers      fosite.TokenIntrospectionHandlers
+		revocationHandlers              fosite.RevocationHandlers
+		deviceEndpointHandlers          fosite.DeviceEndpointHandlers
+		pushedAuthorizeEndpointHandlers fosite.PushedAuthorizeEndpointHandlers // OIDC4VCI extension
+		jwksFetcherStrategy             fosite.JWKSFetcherStrategy
 
 		*config.DefaultProvider
 	}
@@ -53,6 +54,10 @@ type (
 )
 
 var (
+	_ fosite.RARConfigProvider                 = (*Config)(nil)
+	_ fosite.HAIPConfigProvider                = (*Config)(nil)
+	_ fosite.PushedAuthorizeRequestHandlersProvider = (*Config)(nil) // OIDC4VCI extension
+
 	defaultResponseModeHandler = fosite.NewDefaultResponseModeHandler()
 	defaultFactories           = []Factory{
 		compose.OAuth2AuthorizeExplicitFactory,
@@ -104,6 +109,10 @@ func (c *Config) LoadDefaultHandlers(storage fosite.Storage, strategy interface{
 		if dh, ok := res.(fosite.DeviceEndpointHandler); ok {
 			c.deviceEndpointHandlers.Append(dh)
 		}
+		// OIDC4VCI extension
+		if ph, ok := res.(fosite.PushedAuthorizeEndpointHandler); ok {
+			c.pushedAuthorizeEndpointHandlers.Append(ph)
+		}
 	}
 }
 
@@ -139,6 +148,12 @@ func (c *Config) GetRevocationHandlers(context.Context) fosite.RevocationHandler
 // GetDeviceEndpointHandlers returns the deviceEndpointHandlers
 func (c *Config) GetDeviceEndpointHandlers(context.Context) fosite.DeviceEndpointHandlers {
 	return c.deviceEndpointHandlers
+}
+
+// GetPushedAuthorizeEndpointHandlers returns the pushedAuthorizeEndpointHandlers
+// OIDC4VCI extension
+func (c *Config) GetPushedAuthorizeEndpointHandlers(context.Context) fosite.PushedAuthorizeEndpointHandlers {
+	return c.pushedAuthorizeEndpointHandlers
 }
 
 func (c *Config) GetGrantTypeJWTBearerCanSkipClientAuth(context.Context) bool {
