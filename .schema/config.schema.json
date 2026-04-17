@@ -1036,7 +1036,7 @@
       "examples": ["cpu"]
     },
     "tracing": {
-      "$ref": "https://raw.githubusercontent.com/ory/hydra/ef2b6feb/oryx/otelx/config.schema.json"
+      "$ref": "https://raw.githubusercontent.com/ory/hydra/a803efac/oryx/otelx/config.schema.json"
     },
     "sqa": {
       "type": "object",
@@ -1145,6 +1145,27 @@
           "type": "boolean",
           "default": false,
           "description": "Enable HAIP enforcement (PAR required, PKCE S256 required). Infrastructure only — enforcement wired in oidc4vci-haip-metadata spec."
+        }
+      }
+    },
+    "preauth": {
+      "type": "object",
+      "description": "Configures Pre-Authorized Code (OIDC4VCI) grant type support.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the Pre-Authorized Code grant type (urn:ietf:params:oauth:grant-type:pre-authorized_code)."
+        },
+        "lifespan": {
+          "type": "string",
+          "default": "30m",
+          "description": "Lifespan of pre-authorized codes."
+        },
+        "anonymous_access": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow pre-authorized code exchange without client authentication."
         }
       }
     },
