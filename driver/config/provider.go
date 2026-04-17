@@ -130,6 +130,11 @@ const (
 	KeyDPoPNonceEnabled      = "dpop.nonce_enabled"
 	KeyDPoPNonceLifespan     = "dpop.nonce_lifespan"
 	KeyDPoPProofMaxAge       = "dpop.proof_max_age"
+
+	// OIDC4VCI extension — Pre-Authorized Code
+	KeyPreAuthorizedCodeEnabled        = "preauth.enabled"
+	KeyPreAuthorizedCodeLifespan       = "preauth.lifespan"
+	KeyPreAuthorizedCodeAnonymousAccess = "preauth.anonymous_access"
 )
 
 const DSNMemory = "memory"
@@ -855,4 +860,18 @@ func (p *DefaultProvider) GetDPoPPARURLs(ctx context.Context) []string {
 		urlx.AppendPaths(p.PublicURL(ctx), "/oauth2/par").String(),
 		urlx.AppendPaths(p.IssuerURL(ctx), "/oauth2/par").String(),
 	})
+}
+
+// OIDC4VCI extension — Pre-Authorized Code
+
+func (p *DefaultProvider) GetPreAuthorizedCodeEnabled(ctx context.Context) bool {
+	return p.getProvider(ctx).Bool(KeyPreAuthorizedCodeEnabled)
+}
+
+func (p *DefaultProvider) GetPreAuthorizedCodeLifespan(ctx context.Context) time.Duration {
+	return p.getProvider(ctx).DurationF(KeyPreAuthorizedCodeLifespan, 30*time.Minute)
+}
+
+func (p *DefaultProvider) GetPreAuthorizedCodeAnonymousAccess(ctx context.Context) bool {
+	return p.getProvider(ctx).Bool(KeyPreAuthorizedCodeAnonymousAccess)
 }

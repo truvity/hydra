@@ -136,6 +136,9 @@ func (h *Handler) SetPublicRoutes(public *httprouterx.RouterPublic, corsMiddlewa
 func (h *Handler) SetAdminRoutes(admin *httprouterx.RouterAdmin) {
 	admin.POST(IntrospectPath, h.introspectOAuth2Token)
 	admin.DELETE(DeleteTokensPath, h.deleteOAuth2Token)
+
+	// OIDC4VCI extension
+	admin.POST(preauthPath, h.createPreAuthorizedCode)
 }
 
 // swagger:route GET /oauth2/sessions/logout oidc revokeOidcSession

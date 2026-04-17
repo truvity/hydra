@@ -202,62 +202,114 @@ Create a Kiro spec named "oidc4vci-preauth" for implementing the Pre-Authorized 
 
 ## Prerequisites
 
-Spec 1 (oidc4vci-rar-consent) MUST be completed first. It provides:
-- `authorization_details` session propagation and token response extras
-- Config infrastructure patterns
+Spec 1 (oidc4vci-rar-consent) is COMPLETED. It established:
+- Config provider interface pattern: define interface in `fosite/config.go`, embed in `Configurator` in `fosite/fosite.go`, implement on `DefaultProvider` in `driver/config/provider.go`, add schema to `spec/config.json`, run `scripts/render-schemas.sh`. `fositex.Config` embeds `*config.DefaultProvider` so new provider methods are inherited automatically — add compile-time check in `fositex/config.go`.
+- Factory registration pattern: define factory in `fosite/compose/compose_*.go`, register in `driver/registry_sql.go` via `ExtraFositeFactories()` gated by config flag.
+- Error constant pattern: define as `var Err* = &fosite.RFC6749Error{...}` in handler package `errors.go` file.
+- Session.Extra propagation: data stored in `session.Extra` flows to token response (via `responder.SetExtra`), introspection (via `Introspection.Extra` → JSON `"ext"`), refresh token exchange (preserved across serialization), and Token Hook.
+- `PopulateTokenEndpointResponse` pattern: called on ALL registered `TokenEndpointHandler` implementations during response phase regardless of `CanHandleTokenEndpointRequest` result. Must return `fosite.ErrUnknownRequest` when not responsible.
+- Compile-time interface checks: `var _ fosite.TokenEndpointHandler = (*Handler)(nil)`.
+- Persistence pattern: define storage interface in handler package `storage.go`, embed in `persistence.Persister` aggregate interface (`persistence/definitions.go`), implement on SQL persister in `persistence/sql/persister_*.go`, add storage accessor on `RegistrySQL`.
 
-Spec 2 (oidc4vci-dpop) SHOULD be completed first (DPoP can bind tokens issued via this grant), but is not strictly required — the Pre-Auth handler does not call DPoP directly; DPoP decorates the response independently.
+Spec 2 (oidc4vci-dpop) is COMPLETED. It established:
+- DPoP token binding is a cross-cutting handler that decorates all grant types independently. The Pre-Auth handler does NOT call DPoP — DPoP's `PopulateTokenEndpointResponse` runs after Pre-Auth's and binds the token if a `DPoP` header is present.
+- HTTP header injection pattern: `InjectDPoPHeader` in `fosite/handler/dpop/inject.go` extracts raw HTTP headers and injects them into the request form before Fosite processes the request.
+- DPoP-Nonce delivery via context pointer pattern.
+- Stateless HMAC-based nonce generation on the persister.
+- DB migration pattern: additive tables with `nid` column, composite PK `(signature, nid)`, `CREATE TABLE IF NOT EXISTS`.
 
 ## Scope
 
 This spec covers:
-1. Pre-Authorized Code handler (`fosite/handler/preauth/`) implementing `TokenEndpointHandler`
+1. Pre-Authorized Code handler (`fosite/handler/preauth/`) implementing `TokenEndpointHandler` — this is a grant-type-specific handler (unlike DPoP which is cross-cutting)
 2. Grant type: `urn:ietf:params:oauth:grant-type:pre-authorized_code`
-3. `HandleTokenEndpointRequest`: validate `pre-authorized_code`, check `tx_code` (if required), enforce single-use and expiry
-4. `PopulateTokenEndpointResponse`: issue access token, set `authorization_details` with `credential_identifiers` in response extras
-5. `CanSkipClientAuth`: true when anonymous access is enabled
-6. Transaction Code (`tx_code`) validation with proper error codes per OIDC4VCI §6.3
-7. Storage interface `PreAuthorizedCodeStorage` and data model `PreAuthorizedCodeData`
-8. DB table `hydra_oauth2_preauth_code` and migration
-9. SQL persistence implementation in `persistence/sql/`
-10. Admin API endpoint for creating pre-authorized codes (`POST /admin/oauth2/preauth`)
-11. Config provider and keys (`KeyPreAuthorizedCodeEnabled`, `KeyPreAuthorizedCodeLifespan`, `KeyPreAuthorizedCodeAnonymousAccess`)
-12. Compose factory (`fosite/compose/compose_preauth.go`)
-13. Feature documentation in `docs/features/` describing what was implemented, configuration options, admin API, grant flow, tx_code validation, error codes, and references to OIDC4VCI spec and design docs
+3. `CanHandleTokenEndpointRequest`: returns true only for the pre-authorized_code grant type
+4. `CanSkipClientAuth`: returns true when `GetPreAuthorizedCodeAnonymousAccess(ctx)` is true — this is the ONLY handler in the OIDC4VCI feature set that can skip client auth
+5. `HandleTokenEndpointRequest`: validate `pre-authorized_code` from form, load stored grant data, check redeemed/expired, validate `tx_code` if required, mark as redeemed
+6. `PopulateTokenEndpointResponse`: issue access token via `CoreStrategy`, set `authorization_details` with `credential_identifiers` in response extras from stored session data, optionally issue refresh token
+7. Transaction Code (`tx_code`) validation with precise error codes per OIDC4VCI §6.3:
+   - Missing `tx_code` when expected → `invalid_request`
+   - Unexpected `tx_code` when not expected → `invalid_request`
+   - Wrong `tx_code` value → `invalid_grant`
+8. Storage interface `PreAuthorizedCodeStorage` with `GetPreAuthorizedCodeSession`, `InvalidatePreAuthorizedCode`, `CreatePreAuthorizedCodeSession` (for admin API)
+9. Data model `PreAuthorizedCodeData` with all fields from the design doc
+10. DB table `hydra_oauth2_preauth_code` and migration (additive, no upstream conflict)
+11. SQL persistence implementation in `persistence/sql/persister_preauth.go`
+12. Admin API endpoint `POST /admin/oauth2/preauth` for creating pre-authorized codes — this is how the external Credential Issuer creates codes that Wallets later exchange at the token endpoint
+13. Config provider `PreAuthorizedCodeConfigProvider` and keys (`KeyPreAuthorizedCodeEnabled`, `KeyPreAuthorizedCodeLifespan`, `KeyPreAuthorizedCodeAnonymousAccess`)
+14. Compose factory (`fosite/compose/compose_preauth.go`) — note the factory needs a `strategy` parameter (unlike RAR/DPoP which don't issue tokens directly)
+15. Feature documentation in `docs/features/pre-authorized-code.md`
 
 ## Key Design References
 
 Read these documents for authoritative design details:
-- #[[file:docs/ai-context/features/feature-pre-authorized-code.md]] — Full handler design, storage interface, data model, admin API, error codes
-- #[[file:docs/ai-context/01-hydra-internal-design.md]] — TokenEndpointHandler interface, CanSkipClientAuth pattern, compose factory
-- #[[file:docs/ai-context/03-issuer-integration-boundary.md]] — Pre-Authorized Code data flow, Credential Issuer creates codes via admin API
-- #[[file:docs/ai-context/04-fork-maintenance-strategy.md]] — DB migration strategy
+- #[[file:docs/ai-context/features/feature-pre-authorized-code.md]] — Full handler design, storage interface, data model, admin API, error codes, tx_code validation rules
+- #[[file:docs/ai-context/01-hydra-internal-design.md]] — TokenEndpointHandler interface, CanSkipClientAuth pattern, compose factory, Session struct
+- #[[file:docs/ai-context/03-issuer-integration-boundary.md]] — Pre-Authorized Code data flow, Credential Issuer creates codes via admin API, Token Hook integration
+- #[[file:docs/ai-context/04-fork-maintenance-strategy.md]] — DB migration strategy, isolated handler directory
 - #[[file:docs/ai-context/02-oidc4vci-as-requirements.md]] — Requirements V1, V2, V8
-- #[[file:docs/ai-context/00-architecture-overview.md]] — Pre-Authorized Code flow sequence diagram
+- #[[file:docs/ai-context/00-architecture-overview.md]] — Pre-Authorized Code flow sequence diagram (Flow 2)
+- #[[file:.kiro/steering/introspection-context.md]] — How session.Extra flows to introspection response (ext.authorization_details path)
+
+Also reference the completed specs for implementation patterns:
+- #[[file:fosite/handler/rar/handler.go]] — Handler struct pattern, compile-time interface checks
+- #[[file:fosite/handler/rar/token_handler.go]] — TokenEndpointHandler implementation, PopulateTokenEndpointResponse with ErrUnknownRequest
+- #[[file:fosite/handler/dpop/handler.go]] — Handler with storage dependency, DPoPConfigProvider type alias pattern
+- #[[file:fosite/handler/dpop/storage.go]] — Storage interface definition pattern
+- #[[file:fosite/handler/dpop/errors.go]] — Error constant definition pattern
+- #[[file:fosite/compose/compose_dpop.go]] — Factory with storage type assertion
+- #[[file:persistence/sql/persister_dpop.go]] — SQL persister implementation pattern
+- #[[file:docs/features/rar-consent.md]] — Feature documentation pattern
+- #[[file:docs/features/dpop.md]] — Feature documentation pattern
 
 ## Requirements Covered
 
+From the parent requirements document (.kiro/specs/oidc4vci-as-capabilities/requirements.md):
 - Requirement 1: Pre-Authorized Code Grant Type (1.1–1.8)
 
 ## Correctness Properties
 
+From the parent design document (.kiro/specs/oidc4vci-as-capabilities/design.md):
 - Property 1: Pre-Authorized Code Valid Redemption
 - Property 2: Pre-Authorized Code tx_code Validation
 - Property 3: Pre-Authorized Code Anonymous Access
 - Property 4: Pre-Authorized Code Single-Use Enforcement
 - Property 5: Pre-Authorized Code Expiry Enforcement
 
+Additional properties to define in this spec's design:
+- Admin API code creation and retrieval
+- `authorization_details` propagation from stored grant data to token response
+- Token Hook availability (session.Extra with authorization_details is available to hooks)
+- Interaction with DPoP (DPoP binds the token independently if DPoP header present)
+
 ## Implementation Constraints
 
-- Grant-type-specific handler: `CanHandleTokenEndpointRequest` returns true only for `urn:ietf:params:oauth:grant-type:pre-authorized_code`
-- `CanSkipClientAuth` returns true when `GetPreAuthorizedCodeAnonymousAccess(ctx)` is true
+- Grant-type-specific handler: `CanHandleTokenEndpointRequest` returns true ONLY for `urn:ietf:params:oauth:grant-type:pre-authorized_code` — unlike DPoP which is cross-cutting
+- `CanSkipClientAuth` returns true when `GetPreAuthorizedCodeAnonymousAccess(ctx)` is true — this is unique among OIDC4VCI handlers
 - tx_code error codes per OIDC4VCI §6.3: missing tx_code when expected → `invalid_request`; unexpected tx_code → `invalid_request`; wrong tx_code → `invalid_grant`
-- New handler in `fosite/handler/preauth/` — isolated from upstream
-- New DB table `hydra_oauth2_preauth_code` with `nid` column for multi-tenancy
-- Admin API endpoint in `oauth2/handler.go` → `SetAdminRoutes`
+- New handler in `fosite/handler/preauth/` — isolated from upstream, no merge conflict risk
+- New DB table `hydra_oauth2_preauth_code` with `nid` column for multi-tenancy (additive, no upstream conflict)
+- Storage interface `PreAuthorizedCodeStorage` must be added to `persistence.Persister` aggregate interface
+- New storage accessor on `RegistrySQL` with lazy initialization pattern
+- Admin API endpoint in `oauth2/handler.go` → `SetAdminRoutes` — this touches an upstream file, keep changes minimal and clearly marked
+- The factory needs a `strategy` parameter (type-assert to `CoreStrategy`) because this handler issues access tokens directly (unlike RAR which only propagates session data, and DPoP which only decorates responses)
 - Register factory in `driver/registry_sql.go` via `ExtraFositeFactories()`, gated by `KeyPreAuthorizedCodeEnabled`
-- Use `pgregory.net/rapid` for property-based tests
-- As a final task, create `docs/features/pre-authorized-code.md` documenting the implemented feature: what it does, configuration keys and defaults, admin API for code creation, token exchange flow, tx_code validation rules, error codes, and references to OIDC4VCI spec sections and the design docs in `docs/ai-context/`
+- Use `pgregory.net/rapid` for property-based tests, minimum 100 iterations per property
+- tx_code hashing: use bcrypt or SHA-256 for comparing tx_code against stored hash — the design doc says "hash the provided tx_code and compare with stored tx_code_hash" but doesn't specify the algorithm. The design phase should decide.
+- The Pre-Auth handler issues access tokens via `CoreStrategy.GenerateAccessToken` — verify the correct strategy interface and how existing grant handlers (e.g., authorization code, device flow) obtain and use it
+- Copyright header: `// Copyright © 2026 Ory Corp` + `// SPDX-License-Identifier: Apache-2.0`
+- As a final task, create `docs/features/pre-authorized-code.md` documenting the implemented feature: what it does, configuration keys and defaults, admin API for code creation (request/response format), token exchange flow, tx_code validation rules, error codes, interaction with DPoP and RAR, introspection path (`ext.authorization_details`), and references to OIDC4VCI spec sections and the design docs in `docs/ai-context/`
+
+## Design Considerations to Address
+
+The design phase should explicitly address these implementation questions:
+1. What `CoreStrategy` interface does the handler need for issuing access tokens? How do existing grant handlers (authorization code in `fosite/handler/oauth2/`, device flow in `fosite/handler/rfc8628/`) obtain the strategy? The factory likely needs to type-assert the `strategy` parameter.
+2. How is the `pre-authorized_code` value generated and stored? The admin API creates the code — is it an HMAC-based signature (like authorization codes) or a random opaque string? The storage lookup uses the code value — is it stored as a signature/hash or plaintext?
+3. How does the admin API endpoint authenticate? It's an admin endpoint (`SetAdminRoutes`) so it's protected by the admin API authentication (typically mTLS or API key). No additional auth needed in the handler.
+4. How does `authorization_details` from the stored grant data flow into the token response? The handler populates `session.Extra["authorization_details"]` from `PreAuthorizedCodeData.AuthorizationDetails`, then `PopulateTokenEndpointResponse` sets it as a response extra. The RAR handler's `PopulateTokenEndpointResponse` also runs and propagates from session — verify there's no conflict.
+5. How does the handler interact with the existing refresh token handler? If the client is authorized for `refresh_token` grant type, should the Pre-Auth handler issue a refresh token, or does the existing refresh token handler handle that?
+6. What Swagger annotations are needed for the admin API endpoint?
+```
 ```
 
 ---
@@ -271,48 +323,95 @@ Create a Kiro spec named "oidc4vci-wallet-attestation" for implementing Wallet A
 
 ## Prerequisites
 
-Spec 1 (oidc4vci-rar-consent) MUST be completed first (config infrastructure).
-This spec can run IN PARALLEL with Specs 2 or 3 — it has no code dependencies on DPoP or Pre-Auth.
+Spec 1 (oidc4vci-rar-consent) is COMPLETED. It established:
+- Config provider interface pattern: define interface in `fosite/config.go`, embed in `Configurator` in `fosite/fosite.go`, implement on `DefaultProvider` in `driver/config/provider.go`, add schema to `spec/config.json`, run `scripts/render-schemas.sh`. `fositex.Config` embeds `*config.DefaultProvider` so new provider methods are inherited automatically — add compile-time check in `fositex/config.go`.
+- Error constant pattern: define as `var Err* = &fosite.RFC6749Error{...}` in handler package `errors.go` file.
+- Compile-time interface checks: `var _ SomeInterface = (*ConcreteType)(nil)`.
+
+Specs 2 (DPoP) and 3 (Pre-Auth) are COMPLETED but this spec has NO code dependencies on them. Wallet Attestation is a client authentication method — it runs in the `AuthenticateClient` phase, before any `TokenEndpointHandler` or `PushedAuthorizeEndpointHandler` processes the request. However, note:
+- The DPoP handler's `isPublicClient()` in `fosite/handler/dpop/handler.go` already treats `attest_jwt_client_auth` as a public client for refresh token DPoP binding purposes.
+- The Pre-Auth handler's `CanSkipClientAuth` returns true for anonymous access — when Wallet Attestation is the auth method, `CanSkipClientAuth` returns false (Wallet Attestation IS authentication, just not credential-based).
 
 ## Scope
 
 This spec covers:
-1. Wallet Attestation authenticator (`fosite/handler/wallet_attestation/`) implementing client authentication
-2. `OAuth-Client-Attestation` header: parse JWT, validate `x5c` certificate chain against trust anchors, verify signature, validate `exp`, match `sub` to `client_id`, extract `cnf`
-3. `OAuth-Client-Attestation-PoP` header: verify signature using key from attestation's `cnf`, validate `aud` (AS issuer), `iat` freshness, `jti` uniqueness
-4. HAIP-specific rules: trust anchor NOT in `x5c` chain, signing cert NOT self-signed, `sub` shared across wallet instances
-5. Registration as `ClientAuthenticationStrategy` extension
-6. Config provider and keys (`KeyWalletAttestationEnabled`, `KeyWalletAttestationTrustAnchors`)
-7. ES256 algorithm support for both attestation and PoP JWT validation
-8. Feature documentation in `docs/features/` describing what was implemented, configuration options, authentication flow, validation rules, HAIP-specific rules, error codes, and references to HAIP spec and design docs
+1. Wallet Attestation authenticator in `fosite/handler/wallet_attestation/` — this is NOT a `TokenEndpointHandler` or `AuthorizeEndpointHandler`. It's a `ClientAuthenticationStrategy` that plugs into `Fosite.AuthenticateClient()`.
+2. `OAuth-Client-Attestation` header validation: parse JWT, extract `x5c` JOSE header, build X.509 certificate chain, validate chain against configured trust anchors, verify JWT signature with leaf cert public key, validate `exp`, extract `sub` (must match `client_id`), extract `cnf` (confirmation key for PoP)
+3. `OAuth-Client-Attestation-PoP` header validation: verify signature using key from attestation's `cnf`, validate `aud` (AS issuer identifier), `iat` freshness, `jti` uniqueness (replay protection)
+4. HAIP-specific rules: trust anchor MUST NOT be in `x5c` chain, signing cert MUST NOT be self-signed, `sub` shared across wallet instances of same type
+5. Integration into `fositex.Config.GetClientAuthenticationStrategy()` — currently returns `nil` (falls back to default). Must return a strategy that checks for Wallet Attestation headers first, then falls back to the default strategy.
+6. Config provider `WalletAttestationConfigProvider` and keys (`KeyWalletAttestationEnabled`, `KeyWalletAttestationTrustAnchors`)
+7. Trust anchor loading from PEM-encoded certificates in config
+8. ES256 algorithm support for both attestation JWT and PoP JWT signature validation
+9. PoP JWT `jti` replay protection (may reuse DPoP's JTI storage or define a separate mechanism)
+10. Feature documentation in `docs/features/wallet-attestation.md`
 
 ## Key Design References
 
 Read these documents for authoritative design details:
-- #[[file:docs/ai-context/features/feature-wallet-attestation.md]] — Full authentication flow, validation rules, HAIP rules, integration options
-- #[[file:docs/ai-context/01-hydra-internal-design.md]] — ClientAuthenticationStrategyProvider, Fosite.AuthenticateClient()
-- #[[file:docs/ai-context/03-issuer-integration-boundary.md]] — Wallet as OAuth 2.0 Client
+- #[[file:docs/ai-context/features/feature-wallet-attestation.md]] — Full authentication flow, validation rules, HAIP rules, integration options (standalone handler vs client_authentication.go extension)
+- #[[file:docs/ai-context/01-hydra-internal-design.md]] — ClientAuthenticationStrategyProvider, Fosite.AuthenticateClient(), DefaultClientAuthenticationStrategy
+- #[[file:docs/ai-context/03-issuer-integration-boundary.md]] — Wallet as OAuth 2.0 Client, client authentication at PAR and token endpoints
 - #[[file:docs/ai-context/02-oidc4vci-as-requirements.md]] — Requirements H5, H10
 - #[[file:docs/ai-context/features/feature-par.md]] — Wallet Attestation at PAR endpoint uses same client auth pipeline
+- #[[file:docs/ai-context/04-fork-maintenance-strategy.md]] — Fork maintenance for upstream-touching files
+- #[[file:.kiro/steering/introspection-context.md]] — Not directly relevant but useful for understanding session flow
+
+Also reference the completed specs for implementation patterns:
+- #[[file:fosite/handler/dpop/handler.go]] — `isPublicClient()` function already references `attest_jwt_client_auth`
+- #[[file:fosite/handler/dpop/errors.go]] — Error constant definition pattern
+- #[[file:fosite/handler/dpop/storage.go]] — Storage interface pattern (if JTI replay protection needs storage)
+- #[[file:fositex/config.go]] — `GetClientAuthenticationStrategy()` currently returns nil — this is the integration point
+- #[[file:fosite/client_authentication.go]] — `Fosite.AuthenticateClient()` and `DefaultClientAuthenticationStrategy()` — the existing auth pipeline
+- #[[file:docs/features/dpop.md]] — Feature documentation pattern
+- #[[file:docs/features/pre-authorized-code.md]] — Feature documentation pattern
 
 ## Requirements Covered
 
+From the parent requirements document (.kiro/specs/oidc4vci-as-capabilities/requirements.md):
 - Requirement 9: Wallet Attestation Client Authentication (9.1–9.5)
 - Requirement 14: ES256 Algorithm Support (14.2)
 
 ## Correctness Properties
 
+From the parent design document (.kiro/specs/oidc4vci-as-capabilities/design.md):
 - Property 20: Wallet Attestation Validation
+
+Additional properties to define in this spec's design:
+- Attestation JWT x5c chain validation (chain terminates at trust anchor, trust anchor NOT in chain, leaf cert NOT self-signed)
+- PoP JWT signature verification using cnf key from attestation
+- PoP JWT `jti` replay protection
+- `sub` to `client_id` matching
+- Fallback to default authentication when Wallet Attestation headers are absent
+- Same authentication behavior at both PAR and Token endpoints
 
 ## Implementation Constraints
 
-- All validation failures return `invalid_client` (OAuth 2.0 convention)
-- The same auth pipeline applies to both PAR and Token endpoints — no PAR-specific changes needed
-- Trust anchors loaded from PEM config
-- New handler in `fosite/handler/wallet_attestation/` — isolated from upstream
-- May need to extend `fosite/client_authentication.go` (upstream-touching) to add the new auth method check
-- Use `pgregory.net/rapid` for property-based tests
-- As a final task, create `docs/features/wallet-attestation.md` documenting the implemented feature: what it does, configuration keys and defaults, authentication flow (attestation + PoP), validation rules, HAIP-specific constraints, error codes, and references to HAIP spec, OIDC4VCI Appendix E, and the design docs in `docs/ai-context/`
+- This is a CLIENT AUTHENTICATION method, not a token endpoint handler. It plugs into `Fosite.AuthenticateClient()` via `ClientAuthenticationStrategy`, not via the handler pipeline.
+- All validation failures return `invalid_client` (OAuth 2.0 convention for client auth failures)
+- The same auth pipeline applies to both PAR and Token endpoints — `Fosite.AuthenticateClient()` is called for both. No PAR-specific changes needed.
+- Trust anchors loaded from PEM-encoded certificates in config. The config value is a list of PEM strings or file paths — the design phase should decide the format.
+- The integration point is `fositex.Config.GetClientAuthenticationStrategy()` which currently returns `nil`. When Wallet Attestation is enabled, it must return a strategy function that: (a) checks for `OAuth-Client-Attestation` header, (b) if present, validates attestation + PoP, (c) if absent, falls back to `Fosite.DefaultClientAuthenticationStrategy()`.
+- This requires `fositex.Config.GetClientAuthenticationStrategy()` to have access to the `Fosite` instance (for fallback) or to the default strategy. The design phase must resolve this circular dependency.
+- New handler package in `fosite/handler/wallet_attestation/` — isolated from upstream, no merge conflict risk
+- The `fositex/config.go` change (returning a non-nil strategy) is an upstream-touching modification — keep it minimal
+- `fosite/client_authentication.go` itself should NOT be modified — the strategy override via config is the clean extension point
+- PoP JWT `jti` replay protection needs a storage mechanism. Options: (a) reuse DPoP's `DPoPNonceStorage.IsJTIUsed/MarkJTIUsed`, (b) define a separate `WalletAttestationJTIStorage` interface, (c) use an in-memory cache with TTL. The design phase should decide.
+- X.509 certificate chain validation uses Go's `crypto/x509` standard library — no new dependencies needed
+- JWT parsing uses `go-jose/v4` (already a dependency from DPoP spec)
+- Use `pgregory.net/rapid` for property-based tests, minimum 100 iterations per property
+- Copyright header: `// Copyright © 2026 Ory Corp` + `// SPDX-License-Identifier: Apache-2.0`
+- As a final task, create `docs/features/wallet-attestation.md` documenting the implemented feature: what it does, configuration keys and defaults, authentication flow (attestation JWT + PoP JWT), validation rules (x5c chain, signature, claims), HAIP-specific constraints (trust anchor not in chain, no self-signed certs, shared sub), error codes, and references to HAIP spec, OIDC4VCI Appendix E, and the design docs in `docs/ai-context/`
+
+## Design Considerations to Address
+
+The design phase should explicitly address these implementation questions:
+1. How does the `ClientAuthenticationStrategy` function access the `Fosite` instance for fallback to `DefaultClientAuthenticationStrategy`? The strategy is a function `func(context.Context, *http.Request, url.Values) (Client, error)` — it needs a reference to the Fosite instance or the default strategy. Options: (a) closure capturing the Fosite instance, (b) the strategy function is a method on a struct that holds a reference, (c) pass the default strategy as a parameter during construction.
+2. How are trust anchors loaded from config? The `KeyWalletAttestationTrustAnchors` config value could be: (a) a list of PEM-encoded certificate strings directly in the config YAML, (b) a list of file paths to PEM files, (c) a directory path containing PEM files. The design should pick one and specify the parsing logic.
+3. How does the strategy extract the `client_id` from the request to match against the attestation's `sub`? The `client_id` may be in the form body (`form.Get("client_id")`) or derived from other auth methods. The strategy receives `(ctx, r, form)` so it can read `form.Get("client_id")`.
+4. Should PoP JWT `jti` replay protection reuse DPoP's `DPoPNonceStorage` or have its own storage? Reusing DPoP storage is simpler but couples the two features. A separate interface is cleaner but adds another storage dependency. An in-memory TTL cache is simplest but doesn't work in multi-instance deployments.
+5. How does the strategy return the authenticated `Client` object? It needs to look up the client by `client_id` from the client store. The strategy function receives the form (which has `client_id`) but needs access to the client store. This is another dependency the strategy needs — likely via the registry or a client manager interface.
+6. What happens when Wallet Attestation is enabled but the request uses a different auth method (e.g., `client_secret_post`)? The strategy should check for the `OAuth-Client-Attestation` header first — if absent, fall back to the default strategy which handles `client_secret_post`, `client_secret_basic`, `private_key_jwt`, and `none`.
 ```
 
 ---

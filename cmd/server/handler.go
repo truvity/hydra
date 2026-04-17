@@ -47,6 +47,14 @@ func ensureNoMemoryDSN(r *driver.RegistrySQL) {
 	}
 }
 
+// checkOIDC4VCIConfigContradictions logs warnings for contradictory OIDC4VCI configuration.
+// OIDC4VCI extension
+func checkOIDC4VCIConfigContradictions(ctx context.Context, d *driver.RegistrySQL) {
+	if d.Config().GetHAIPEnforced(ctx) && d.Config().GetPreAuthorizedCodeAnonymousAccess(ctx) {
+		d.Logger().Warnln("Configuration contradiction: haip.enforced=true requires client authentication at the token endpoint, but preauth.anonymous_access=true allows pre-authorized code exchange without client authentication. HAIP compliance cannot be guaranteed for anonymous pre-authorized code flows.")
+	}
+}
+
 func RunServeAdmin(dOpts []driver.OptionsModifier) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		fmt.Println(banner(config.Version))
@@ -58,6 +66,7 @@ func RunServeAdmin(dOpts []driver.OptionsModifier) func(cmd *cobra.Command, args
 			return err
 		}
 		ensureNoMemoryDSN(d)
+		checkOIDC4VCIConfigContradictions(ctx, d)
 
 		srv, err := adminServer(ctx, d, sqa(ctx, d, cmd))
 		if err != nil {
@@ -78,6 +87,7 @@ func RunServePublic(dOpts []driver.OptionsModifier) func(cmd *cobra.Command, arg
 			return err
 		}
 		ensureNoMemoryDSN(d)
+		checkOIDC4VCIConfigContradictions(ctx, d)
 
 		srv, err := publicServer(ctx, d, sqa(ctx, d, cmd))
 		if err != nil {
@@ -97,6 +107,7 @@ func RunServeAll(dOpts []driver.OptionsModifier) func(cmd *cobra.Command, args [
 		if err != nil {
 			return err
 		}
+		checkOIDC4VCIConfigContradictions(ctx, d)
 
 		eg, ctx := errgroup.WithContext(ctx)
 		ms := sqa(ctx, d, cmd)

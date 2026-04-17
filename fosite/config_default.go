@@ -601,3 +601,15 @@ func (c *Config) GetDPoPProofMaxAge(_ context.Context) time.Duration {
 func (c *Config) GetDPoPPARURLs(_ context.Context) []string {
 	return nil
 }
+
+func (c *Config) GetPreAuthorizedCodeEnabled(_ context.Context) bool {
+	return false
+}
+
+func (c *Config) GetPreAuthorizedCodeLifespan(_ context.Context) time.Duration {
+	return 30 * time.Minute
+}
+
+func (c *Config) GetPreAuthorizedCodeAnonymousAccess(_ context.Context) bool {
+	return false
+}

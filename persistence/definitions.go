@@ -9,6 +9,7 @@ import (
 	"github.com/ory/hydra/v2/client"
 	"github.com/ory/hydra/v2/consent"
 	"github.com/ory/hydra/v2/fosite/handler/dpop"
+	"github.com/ory/hydra/v2/fosite/handler/preauth"
 	"github.com/ory/hydra/v2/oauth2/trust"
 	"github.com/ory/hydra/v2/x"
 	"github.com/ory/pop/v6"
@@ -24,6 +25,7 @@ type (
 		x.FositeStorer
 		trust.GrantManager
 		dpop.DPoPNonceStorage
+		preauth.PreAuthorizedCodeStorage // OIDC4VCI extension
 
 		Connection(context.Context) *pop.Connection
 		Transaction(context.Context, func(ctx context.Context, c *pop.Connection) error) error

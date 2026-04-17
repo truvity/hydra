@@ -154,6 +154,7 @@ type Configurator interface {
 	RARConfigProvider
 	HAIPConfigProvider
 	DPoPConfigProvider
+	PreAuthorizedCodeConfigProvider
 }
 
 func NewOAuth2Provider(s Storage, c Configurator) *Fosite {

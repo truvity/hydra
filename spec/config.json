@@ -1148,6 +1148,27 @@
         }
       }
     },
+    "preauth": {
+      "type": "object",
+      "description": "Configures Pre-Authorized Code (OIDC4VCI) grant type support.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the Pre-Authorized Code grant type (urn:ietf:params:oauth:grant-type:pre-authorized_code)."
+        },
+        "lifespan": {
+          "type": "string",
+          "default": "30m",
+          "description": "Lifespan of pre-authorized codes."
+        },
+        "anonymous_access": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow pre-authorized code exchange without client authentication."
+        }
+      }
+    },
     "feature_flags": {
       "title": "Feature flags",
       "type": "object",

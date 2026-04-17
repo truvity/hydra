@@ -33,6 +33,7 @@ import (
 	"github.com/ory/hydra/v2/fosite/handler/rfc7523"
 	"github.com/ory/hydra/v2/fosite/handler/rfc8628"
 	"github.com/ory/hydra/v2/fosite/handler/dpop"
+	"github.com/ory/hydra/v2/fosite/handler/preauth"
 	"github.com/ory/hydra/v2/fosite/handler/verifiable"
 	"github.com/ory/hydra/v2/fosite/token/hmac"
 	"github.com/ory/hydra/v2/fositex"
@@ -169,6 +170,20 @@ func (m *RegistrySQL) NonceManager() verifiable.NonceManager {
 // OIDC4VCI extension
 func (m *RegistrySQL) DPoPNonceStorage() dpop.DPoPNonceStorage {
 	return m.Persister().(dpop.DPoPNonceStorage)
+}
+
+// PreAuthorizedCodeStorage returns the pre-authorized code storage, backed by the SQL persister.
+// OIDC4VCI extension
+func (m *RegistrySQL) PreAuthorizedCodeStorage() preauth.PreAuthorizedCodeStorage {
+	return m.Persister().(preauth.PreAuthorizedCodeStorage)
+}
+
+// CreatePreauthSession persists a pre-authorized code row via BasePersister.
+// Exposed for the admin API handler in oauth2/ which cannot import
+// fosite/handler/preauth due to an import cycle.
+// OIDC4VCI extension
+func (m *RegistrySQL) CreatePreauthSession(ctx context.Context, data interface{}) error {
+	return m.BasePersister().CreateWithNetwork(ctx, data)
 }
 
 // defaultInitialPing is the default function that will be called within RegistrySQL.Init to make sure
@@ -560,6 +575,9 @@ func (m *RegistrySQL) ExtraFositeFactories() []fositex.Factory {
 	}
 	if m.Config().GetDPoPEnabled(context.TODO()) {
 		factories = append(factories, compose.DPoPFactory)
+	}
+	if m.Config().GetPreAuthorizedCodeEnabled(context.TODO()) {
+		factories = append(factories, compose.PreAuthorizedCodeFactory)
 	}
 
 	return factories

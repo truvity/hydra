@@ -345,6 +345,16 @@ type HAIPConfigProvider interface {
 }
 
 // OIDC4VCI extension
+type PreAuthorizedCodeConfigProvider interface {
+	// GetPreAuthorizedCodeEnabled returns whether the Pre-Authorized Code grant type is enabled.
+	GetPreAuthorizedCodeEnabled(ctx context.Context) bool
+	// GetPreAuthorizedCodeLifespan returns the lifespan of pre-authorized codes.
+	GetPreAuthorizedCodeLifespan(ctx context.Context) time.Duration
+	// GetPreAuthorizedCodeAnonymousAccess returns whether anonymous (no client auth) pre-authorized code exchange is allowed.
+	GetPreAuthorizedCodeAnonymousAccess(ctx context.Context) bool
+}
+
+// OIDC4VCI extension
 type DPoPConfigProvider interface {
 	// GetDPoPEnabled returns whether DPoP (RFC 9449) token binding is enabled.
 	GetDPoPEnabled(ctx context.Context) bool
