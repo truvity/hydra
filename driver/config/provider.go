@@ -6,6 +6,8 @@ package config
 import (
 	"context"
 	"crypto/sha512"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"math"
 	"net/http"
@@ -135,6 +137,10 @@ const (
 	KeyPreAuthorizedCodeEnabled        = "preauth.enabled"
 	KeyPreAuthorizedCodeLifespan       = "preauth.lifespan"
 	KeyPreAuthorizedCodeAnonymousAccess = "preauth.anonymous_access"
+
+	// OIDC4VCI extension — Wallet Attestation
+	KeyWalletAttestationEnabled      = "wallet_attestation.enabled"
+	KeyWalletAttestationTrustAnchors = "wallet_attestation.trust_anchors"
 )
 
 const DSNMemory = "memory"
@@ -874,4 +880,29 @@ func (p *DefaultProvider) GetPreAuthorizedCodeLifespan(ctx context.Context) time
 
 func (p *DefaultProvider) GetPreAuthorizedCodeAnonymousAccess(ctx context.Context) bool {
 	return p.getProvider(ctx).Bool(KeyPreAuthorizedCodeAnonymousAccess)
+}
+
+// OIDC4VCI extension — Wallet Attestation
+
+func (p *DefaultProvider) GetWalletAttestationEnabled(ctx context.Context) bool {
+	return p.getProvider(ctx).Bool(KeyWalletAttestationEnabled)
+}
+
+func (p *DefaultProvider) GetWalletAttestationTrustAnchors(ctx context.Context) []*x509.Certificate {
+	pemStrings := p.getProvider(ctx).Strings(KeyWalletAttestationTrustAnchors)
+	var certs []*x509.Certificate
+	for i, pemStr := range pemStrings {
+		block, _ := pem.Decode([]byte(pemStr))
+		if block == nil {
+			p.l.Warnf("Skipping malformed PEM entry at index %d in %s: no PEM block found", i, KeyWalletAttestationTrustAnchors)
+			continue
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			p.l.WithError(err).Warnf("Skipping malformed certificate at index %d in %s", i, KeyWalletAttestationTrustAnchors)
+			continue
+		}
+		certs = append(certs, cert)
+	}
+	return certs
 }

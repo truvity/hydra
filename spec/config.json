@@ -1169,6 +1169,25 @@
         }
       }
     },
+    "wallet_attestation": {
+      "type": "object",
+      "description": "Configures Wallet Attestation (attest_jwt_client_auth) client authentication per draft-ietf-oauth-attestation-based-client-auth-07.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Wallet Attestation client authentication (attest_jwt_client_auth)."
+        },
+        "trust_anchors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "PEM-encoded X.509 trust anchor certificates for validating Wallet Attestation x5c certificate chains."
+        }
+      }
+    },
     "feature_flags": {
       "title": "Feature flags",
       "type": "object",

@@ -5,6 +5,7 @@ package fosite
 
 import (
 	"context"
+	"crypto/x509"
 	"hash"
 	"html/template"
 	"net/url"
@@ -352,6 +353,14 @@ type PreAuthorizedCodeConfigProvider interface {
 	GetPreAuthorizedCodeLifespan(ctx context.Context) time.Duration
 	// GetPreAuthorizedCodeAnonymousAccess returns whether anonymous (no client auth) pre-authorized code exchange is allowed.
 	GetPreAuthorizedCodeAnonymousAccess(ctx context.Context) bool
+}
+
+// OIDC4VCI extension
+type WalletAttestationConfigProvider interface {
+	// GetWalletAttestationEnabled returns whether Wallet Attestation (attest_jwt_client_auth) is enabled.
+	GetWalletAttestationEnabled(ctx context.Context) bool
+	// GetWalletAttestationTrustAnchors returns the configured trust anchor certificates for Wallet Attestation x5c chain validation.
+	GetWalletAttestationTrustAnchors(ctx context.Context) []*x509.Certificate
 }
 
 // OIDC4VCI extension

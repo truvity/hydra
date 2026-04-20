@@ -8,6 +8,7 @@ import (
 	"crypto/sha512"
 	"hash"
 	"html/template"
+	"net/http"
 	"net/url"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -17,6 +18,7 @@ import (
 	"github.com/ory/hydra/v2/driver/config"
 	"github.com/ory/hydra/v2/fosite"
 	"github.com/ory/hydra/v2/fosite/compose"
+	wallet_attestation "github.com/ory/hydra/v2/fosite/handler/wallet_attestation"
 	"github.com/ory/hydra/v2/fosite/i18n"
 	"github.com/ory/hydra/v2/fosite/token/jwt"
 	"github.com/ory/hydra/v2/oauth2"
@@ -46,6 +48,9 @@ type (
 		pushedAuthorizeEndpointHandlers fosite.PushedAuthorizeEndpointHandlers // OIDC4VCI extension
 		jwksFetcherStrategy             fosite.JWKSFetcherStrategy
 
+		fositeInstance                  *fosite.Fosite                        // OIDC4VCI extension: set after Fosite creation for DefaultClientAuthenticationStrategy fallback
+		walletAttestationAuthenticator  *wallet_attestation.Authenticator     // OIDC4VCI extension: lazily initialized when Wallet Attestation is enabled
+
 		*config.DefaultProvider
 	}
 	ConfigProvider interface {
@@ -59,6 +64,7 @@ var (
 	_ fosite.PushedAuthorizeRequestHandlersProvider = (*Config)(nil) // OIDC4VCI extension
 	_ fosite.DPoPConfigProvider                     = (*Config)(nil) // OIDC4VCI extension
 	_ fosite.PreAuthorizedCodeConfigProvider        = (*Config)(nil) // OIDC4VCI extension
+	_ fosite.WalletAttestationConfigProvider        = (*Config)(nil) // OIDC4VCI extension
 
 	defaultResponseModeHandler = fosite.NewDefaultResponseModeHandler()
 	defaultFactories           = []Factory{
@@ -190,9 +196,39 @@ func (c *Config) GetMinParameterEntropy(_ context.Context) int {
 	return fosite.MinParameterEntropy
 }
 
-func (c *Config) GetClientAuthenticationStrategy(context.Context) fosite.ClientAuthenticationStrategy {
-	// Fosite falls back to the default fosite.Fosite.DefaultClientAuthenticationStrategy when this is nil.
-	return nil
+// SetFositeInstance stores a reference to the Fosite instance for
+// DefaultClientAuthenticationStrategy fallback. Called by RegistrySQL.OAuth2Provider()
+// after creating the Fosite instance.
+// OIDC4VCI extension
+func (c *Config) SetFositeInstance(f *fosite.Fosite) {
+	c.fositeInstance = f
+}
+
+func (c *Config) GetClientAuthenticationStrategy(ctx context.Context) fosite.ClientAuthenticationStrategy {
+	if !c.GetWalletAttestationEnabled(ctx) {
+		// Fosite falls back to the default fosite.Fosite.DefaultClientAuthenticationStrategy when this is nil.
+		return nil
+	}
+
+	// Lazily initialize the Wallet Attestation authenticator on first call.
+	if c.walletAttestationAuthenticator == nil {
+		c.walletAttestationAuthenticator = &wallet_attestation.Authenticator{
+			Config:   c,
+			Store:    c.fositeInstance.Store,
+			JTIStore: c.fositeInstance.Store.(wallet_attestation.JTIStorage),
+			IssuerURL: func(ctx context.Context) string {
+				return c.deps.Config().IssuerURL(ctx).String()
+			},
+		}
+	}
+
+	// OIDC4VCI extension: return a strategy that routes based on header presence.
+	return func(ctx context.Context, r *http.Request, form url.Values) (fosite.Client, error) {
+		if r.Header.Get("OAuth-Client-Attestation") != "" {
+			return c.walletAttestationAuthenticator.AuthenticateClient(ctx, r, form)
+		}
+		return c.fositeInstance.DefaultClientAuthenticationStrategy(ctx, r, form)
+	}
 }
 
 func (c *Config) GetResponseModeHandlerExtension(context.Context) fosite.ResponseModeHandler {

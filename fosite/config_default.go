@@ -5,6 +5,7 @@ package fosite
 
 import (
 	"context"
+	"crypto/x509"
 	"hash"
 	"html/template"
 	"net/url"
@@ -612,4 +613,14 @@ func (c *Config) GetPreAuthorizedCodeLifespan(_ context.Context) time.Duration {
 
 func (c *Config) GetPreAuthorizedCodeAnonymousAccess(_ context.Context) bool {
 	return false
+}
+
+// OIDC4VCI extension
+
+func (c *Config) GetWalletAttestationEnabled(_ context.Context) bool {
+	return false
+}
+
+func (c *Config) GetWalletAttestationTrustAnchors(_ context.Context) []*x509.Certificate {
+	return nil
 }

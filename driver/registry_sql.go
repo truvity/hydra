@@ -493,6 +493,9 @@ func (m *RegistrySQL) HTTPClient(_ context.Context, opts ...httpx.ResilientOptio
 func (m *RegistrySQL) OAuth2Provider() fosite.OAuth2Provider {
 	if m.fop == nil {
 		m.fop = fosite.NewOAuth2Provider(m, m.OAuth2ProviderConfig())
+		// OIDC4VCI extension: provide the Fosite instance to the config for
+		// Wallet Attestation strategy fallback to DefaultClientAuthenticationStrategy.
+		m.OAuth2Config().SetFositeInstance(m.fop.(*fosite.Fosite))
 	}
 	return m.fop
 }
@@ -578,6 +581,9 @@ func (m *RegistrySQL) ExtraFositeFactories() []fositex.Factory {
 	}
 	if m.Config().GetPreAuthorizedCodeEnabled(context.TODO()) {
 		factories = append(factories, compose.PreAuthorizedCodeFactory)
+	}
+	if m.Config().GetWalletAttestationEnabled(context.TODO()) {
+		factories = append(factories, compose.WalletAttestationRefreshBindingFactory)
 	}
 
 	return factories

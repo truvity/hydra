@@ -155,6 +155,7 @@ type Configurator interface {
 	HAIPConfigProvider
 	DPoPConfigProvider
 	PreAuthorizedCodeConfigProvider
+	WalletAttestationConfigProvider
 }
 
 func NewOAuth2Provider(s Storage, c Configurator) *Fosite {
