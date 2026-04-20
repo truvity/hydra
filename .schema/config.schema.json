@@ -1036,7 +1036,7 @@
       "examples": ["cpu"]
     },
     "tracing": {
-      "$ref": "https://raw.githubusercontent.com/ory/hydra/a803efac/oryx/otelx/config.schema.json"
+      "$ref": "https://raw.githubusercontent.com/ory/hydra/53625078/oryx/otelx/config.schema.json"
     },
     "sqa": {
       "type": "object",
@@ -1166,6 +1166,25 @@
           "type": "boolean",
           "default": false,
           "description": "Allow pre-authorized code exchange without client authentication."
+        }
+      }
+    },
+    "wallet_attestation": {
+      "type": "object",
+      "description": "Configures Wallet Attestation (attest_jwt_client_auth) client authentication per draft-ietf-oauth-attestation-based-client-auth-07.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Wallet Attestation client authentication (attest_jwt_client_auth)."
+        },
+        "trust_anchors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "PEM-encoded X.509 trust anchor certificates for validating Wallet Attestation x5c certificate chains."
         }
       }
     },
