@@ -124,18 +124,22 @@ const (
 	KeyDevelopmentMode                           = "dev"
 
 	// OIDC4VCI extension
-	KeyRAREnabled            = "rar.enabled"
-	KeyRARTypesSupported     = "rar.types_supported"
-	KeyHAIPEnforced          = "haip.enforced"
-	KeyDPoPEnabled           = "dpop.enabled"
-	KeyDPoPSigningAlgValues  = "dpop.signing_alg_values_supported"
-	KeyDPoPNonceEnabled      = "dpop.nonce_enabled"
-	KeyDPoPNonceLifespan     = "dpop.nonce_lifespan"
-	KeyDPoPProofMaxAge       = "dpop.proof_max_age"
+	KeyRAREnabled                      = "rar.enabled"
+	KeyRARTypesSupported               = "rar.types_supported"
+	KeyHAIPEnforced                    = "haip.enforced"
+	KeyDPoPEnabled                     = "dpop.enabled"
+	KeyDPoPSigningAlgValues            = "dpop.signing_alg_values_supported"
+	KeyDPoPNonceEnabled                = "dpop.nonce_enabled"
+	KeyDPoPNonceLifespan               = "dpop.nonce_lifespan"
+	KeyDPoPProofMaxAge                 = "dpop.proof_max_age"
+	KeyAuthResponseIssParameterEnabled = "rfc9207.iss_parameter_enabled"
+	KeyEnforcePushedAuthorize          = "oauth2.par.enforced"
+	KeyPushedAuthorizeContextLifespan  = "oauth2.par.context_lifespan"
+	KeyPKCEPlainChallengeMethod        = "oauth2.pkce.plain_challenge_method"
 
 	// OIDC4VCI extension — Pre-Authorized Code
-	KeyPreAuthorizedCodeEnabled        = "preauth.enabled"
-	KeyPreAuthorizedCodeLifespan       = "preauth.lifespan"
+	KeyPreAuthorizedCodeEnabled         = "preauth.enabled"
+	KeyPreAuthorizedCodeLifespan        = "preauth.lifespan"
 	KeyPreAuthorizedCodeAnonymousAccess = "preauth.anonymous_access"
 
 	// OIDC4VCI extension — Wallet Attestation
@@ -708,7 +712,15 @@ func (p *DefaultProvider) GetSendDebugMessagesToClients(ctx context.Context) boo
 }
 
 func (p *DefaultProvider) GetEnforcePKCE(ctx context.Context) bool {
-	return p.getProvider(ctx).Bool(KeyPKCEEnforced)
+	return p.getProvider(ctx).BoolF(KeyPKCEEnforced, false) ||
+		p.getProvider(ctx).BoolF(KeyHAIPEnforced, false)
+}
+
+func (p *DefaultProvider) GetEnablePKCEPlainChallengeMethod(ctx context.Context) bool {
+	if p.getProvider(ctx).BoolF(KeyHAIPEnforced, false) {
+		return false
+	}
+	return p.getProvider(ctx).BoolF(KeyPKCEPlainChallengeMethod, false)
 }
 
 func (p *DefaultProvider) GetEnforcePKCEForPublicClients(ctx context.Context) bool {
@@ -841,12 +853,44 @@ func (p *DefaultProvider) GetHAIPEnforced(ctx context.Context) bool {
 	return p.getProvider(ctx).Bool(KeyHAIPEnforced)
 }
 
+func (p *DefaultProvider) GetAuthResponseIssParameterEnabled(ctx context.Context) bool {
+	return p.getProvider(ctx).BoolF(KeyAuthResponseIssParameterEnabled, false) ||
+		p.getProvider(ctx).BoolF(KeyHAIPEnforced, false)
+}
+
+func (p *DefaultProvider) GetPushedAuthorizeRequestURIPrefix(ctx context.Context) string {
+	return "urn:ietf:params:oauth:request_uri:"
+}
+
+func (p *DefaultProvider) GetPushedAuthorizeContextLifespan(ctx context.Context) time.Duration {
+	return p.getProvider(ctx).DurationF(KeyPushedAuthorizeContextLifespan, 5*time.Minute)
+}
+
+func (p *DefaultProvider) EnforcePushedAuthorize(ctx context.Context) bool {
+	return p.getProvider(ctx).BoolF(KeyEnforcePushedAuthorize, false) ||
+		p.getProvider(ctx).BoolF(KeyHAIPEnforced, false)
+}
+
 func (p *DefaultProvider) GetDPoPEnabled(ctx context.Context) bool {
-	return p.getProvider(ctx).Bool(KeyDPoPEnabled)
+	return p.getProvider(ctx).BoolF(KeyDPoPEnabled, false) ||
+		p.getProvider(ctx).BoolF(KeyHAIPEnforced, false)
 }
 
 func (p *DefaultProvider) GetDPoPSigningAlgValuesSupported(ctx context.Context) []string {
-	return p.getProvider(ctx).StringsF(KeyDPoPSigningAlgValues, []string{"ES256"})
+	algs := p.getProvider(ctx).StringsF(KeyDPoPSigningAlgValues, []string{"ES256"})
+	if p.getProvider(ctx).BoolF(KeyHAIPEnforced, false) {
+		hasES256 := false
+		for _, a := range algs {
+			if a == "ES256" {
+				hasES256 = true
+				break
+			}
+		}
+		if !hasES256 {
+			algs = append(algs, "ES256")
+		}
+	}
+	return algs
 }
 
 func (p *DefaultProvider) GetDPoPNonceEnabled(ctx context.Context) bool {

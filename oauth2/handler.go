@@ -470,6 +470,23 @@ type oidcConfiguration struct {
 
 	// OIDC4VCI extension
 	AuthorizationDetailsTypesSupported []string `json:"authorization_details_types_supported,omitempty"`
+
+	// --- OIDC4VCI Extensions (custom fork) ---
+
+	// PAR endpoint URL (RFC 9126 §5)
+	PushedAuthorizationRequestEndpoint string `json:"pushed_authorization_request_endpoint,omitempty"`
+
+	// Whether PAR is required (RFC 9126 §5)
+	RequirePushedAuthorizationRequests bool `json:"require_pushed_authorization_requests,omitempty"`
+
+	// Pre-Authorized Code anonymous access (OIDC4VCI §12.3)
+	PreAuthorizedGrantAnonymousAccessSupported bool `json:"pre-authorized_grant_anonymous_access_supported,omitempty"`
+
+	// DPoP signing algorithms (RFC 9449 §5)
+	DPoPSigningAlgValuesSupported []string `json:"dpop_signing_alg_values_supported,omitempty"`
+
+	// RFC 9207 iss parameter support
+	AuthorizationResponseIssParameterSupported bool `json:"authorization_response_iss_parameter_supported,omitempty"`
 }
 
 // Verifiable Credentials Metadata (Draft 00)
@@ -526,6 +543,23 @@ func (h *Handler) discoverOidcConfiguration(w http.ResponseWriter, r *http.Reque
 		h.r.Writer().WriteError(w, r, err)
 		return
 	}
+
+	// OIDC4VCI extension: dynamic lists
+	grantTypes := []string{"authorization_code", "implicit", "client_credentials", "refresh_token", "urn:ietf:params:oauth:grant-type:device_code"}
+	if h.c.GetPreAuthorizedCodeEnabled(ctx) {
+		grantTypes = append(grantTypes, "urn:ietf:params:oauth:grant-type:pre-authorized_code")
+	}
+
+	authMethods := []string{"client_secret_post", "client_secret_basic", "private_key_jwt", "none"}
+	if h.c.GetWalletAttestationEnabled(ctx) {
+		authMethods = append(authMethods, "attest_jwt_client_auth")
+	}
+
+	codeChallengeMethodsSupported := []string{"plain", "S256"}
+	if h.c.GetHAIPEnforced(ctx) {
+		codeChallengeMethodsSupported = []string{"S256"}
+	}
+
 	cfg := &oidcConfiguration{
 		Issuer:                                 h.c.IssuerURL(ctx).String(),
 		AuthURL:                                h.c.OAuth2AuthURL(ctx).String(),
@@ -539,11 +573,11 @@ func (h *Handler) discoverOidcConfiguration(w http.ResponseWriter, r *http.Reque
 		ClaimsSupported:                        h.c.OIDCDiscoverySupportedClaims(ctx),
 		ScopesSupported:                        h.c.OIDCDiscoverySupportedScope(ctx),
 		UserinfoEndpoint:                       h.c.OIDCDiscoveryUserinfoEndpoint(ctx).String(),
-		TokenEndpointAuthMethodsSupported:      []string{"client_secret_post", "client_secret_basic", "private_key_jwt", "none"},
+		TokenEndpointAuthMethodsSupported:      authMethods,
 		IDTokenSigningAlgValuesSupported:       []string{key.Algorithm},
 		IDTokenSignedResponseAlg:               []string{key.Algorithm},
 		UserinfoSignedResponseAlg:              []string{key.Algorithm},
-		GrantTypesSupported:                    []string{"authorization_code", "implicit", "client_credentials", "refresh_token", "urn:ietf:params:oauth:grant-type:device_code"},
+		GrantTypesSupported:                    grantTypes,
 		ResponseModesSupported:                 []string{"query", "fragment", "form_post"},
 		UserinfoSigningAlgValuesSupported:      []string{"none", key.Algorithm},
 		RequestParameterSupported:              true,
@@ -555,7 +589,7 @@ func (h *Handler) discoverOidcConfiguration(w http.ResponseWriter, r *http.Reque
 		FrontChannelLogoutSessionSupported:     true,
 		EndSessionEndpoint:                     urlx.AppendPaths(h.c.IssuerURL(ctx), LogoutPath).String(),
 		RequestObjectSigningAlgValuesSupported: []string{"none", "RS256", "ES256"},
-		CodeChallengeMethodsSupported:          []string{"plain", "S256"},
+		CodeChallengeMethodsSupported:          codeChallengeMethodsSupported,
 		CredentialsEndpointDraft00:             h.c.CredentialsEndpointURL(ctx).String(),
 		CredentialsSupportedDraft00: []CredentialSupportedDraft00{{
 			Format:                               "jwt_vc_json",
@@ -573,6 +607,21 @@ func (h *Handler) discoverOidcConfiguration(w http.ResponseWriter, r *http.Reque
 	// OIDC4VCI extension
 	if h.c.GetRAREnabled(ctx) {
 		cfg.AuthorizationDetailsTypesSupported = h.c.GetRARTypesSupported(ctx)
+	}
+
+	// OIDC4VCI extension: metadata fields
+	cfg.PushedAuthorizationRequestEndpoint = urlx.AppendPaths(h.c.IssuerURL(ctx), PushedAuthorizePath).String()
+	if h.c.EnforcePushedAuthorize(ctx) {
+		cfg.RequirePushedAuthorizationRequests = true
+	}
+	if h.c.GetDPoPEnabled(ctx) {
+		cfg.DPoPSigningAlgValuesSupported = h.c.GetDPoPSigningAlgValuesSupported(ctx)
+	}
+	if h.c.GetAuthResponseIssParameterEnabled(ctx) {
+		cfg.AuthorizationResponseIssParameterSupported = true
+	}
+	if h.c.GetPreAuthorizedCodeEnabled(ctx) {
+		cfg.PreAuthorizedGrantAnonymousAccessSupported = h.c.GetPreAuthorizedCodeAnonymousAccess(ctx)
 	}
 
 	h.r.Writer().Write(w, r, cfg)

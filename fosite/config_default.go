@@ -579,6 +579,10 @@ func (c *Config) GetHAIPEnforced(_ context.Context) bool {
 	return false
 }
 
+func (c *Config) GetAuthResponseIssParameterEnabled(_ context.Context) bool {
+	return false
+}
+
 func (c *Config) GetDPoPEnabled(_ context.Context) bool {
 	return false
 }

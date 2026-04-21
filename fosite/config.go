@@ -364,6 +364,13 @@ type WalletAttestationConfigProvider interface {
 }
 
 // OIDC4VCI extension
+type AuthResponseIssConfigProvider interface {
+	// GetAuthResponseIssParameterEnabled returns whether the iss parameter
+	// should be included in authorization responses per RFC 9207.
+	GetAuthResponseIssParameterEnabled(ctx context.Context) bool
+}
+
+// OIDC4VCI extension
 type DPoPConfigProvider interface {
 	// GetDPoPEnabled returns whether DPoP (RFC 9449) token binding is enabled.
 	GetDPoPEnabled(ctx context.Context) bool

@@ -47,6 +47,11 @@ func (f *Fosite) WriteAuthorizeError(ctx context.Context, rw http.ResponseWriter
 	errors := rfcerr.ToValues()
 	errors.Set("state", ar.GetState())
 
+	// OIDC4VCI extension: RFC 9207 iss parameter (redirect errors only)
+	if f.Config.GetAuthResponseIssParameterEnabled(ctx) {
+		errors.Set("iss", f.Config.GetIDTokenIssuer(ctx))
+	}
+
 	var redirectURIString string
 	if ar.GetResponseMode() == ResponseModeFormPost {
 		rw.Header().Set("Content-Type", "text/html;charset=UTF-8")

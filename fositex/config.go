@@ -48,8 +48,8 @@ type (
 		pushedAuthorizeEndpointHandlers fosite.PushedAuthorizeEndpointHandlers // OIDC4VCI extension
 		jwksFetcherStrategy             fosite.JWKSFetcherStrategy
 
-		fositeInstance                  *fosite.Fosite                        // OIDC4VCI extension: set after Fosite creation for DefaultClientAuthenticationStrategy fallback
-		walletAttestationAuthenticator  *wallet_attestation.Authenticator     // OIDC4VCI extension: lazily initialized when Wallet Attestation is enabled
+		fositeInstance                 *fosite.Fosite                    // OIDC4VCI extension: set after Fosite creation for DefaultClientAuthenticationStrategy fallback
+		walletAttestationAuthenticator *wallet_attestation.Authenticator // OIDC4VCI extension: lazily initialized when Wallet Attestation is enabled
 
 		*config.DefaultProvider
 	}
@@ -65,6 +65,8 @@ var (
 	_ fosite.DPoPConfigProvider                     = (*Config)(nil) // OIDC4VCI extension
 	_ fosite.PreAuthorizedCodeConfigProvider        = (*Config)(nil) // OIDC4VCI extension
 	_ fosite.WalletAttestationConfigProvider        = (*Config)(nil) // OIDC4VCI extension
+	_ fosite.AuthResponseIssConfigProvider          = (*Config)(nil) // OIDC4VCI extension
+	_ fosite.PushedAuthorizeRequestConfigProvider   = (*Config)(nil) // OIDC4VCI extension
 
 	defaultResponseModeHandler = fosite.NewDefaultResponseModeHandler()
 	defaultFactories           = []Factory{
@@ -178,10 +180,6 @@ func (c *Config) GetOmitRedirectScopeParam(context.Context) bool {
 
 func (c *Config) GetSanitationWhiteList(context.Context) []string {
 	return []string{"code", "redirect_uri"}
-}
-
-func (c *Config) GetEnablePKCEPlainChallengeMethod(context.Context) bool {
-	return false
 }
 
 func (c *Config) GetDisableRefreshTokenValidation(context.Context) bool {

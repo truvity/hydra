@@ -33,3 +33,4 @@ cypress/screenshots
 BENCHMARKS.md
 *.sqlite
 hydra
+**/testdata/rapid/

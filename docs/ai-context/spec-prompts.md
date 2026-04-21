@@ -421,57 +421,107 @@ The design phase should explicitly address these implementation questions:
 ### Prompt
 
 ```
-Create a Kiro spec named "oidc4vci-haip-metadata" for implementing HAIP enforcement (PAR + PKCE S256), RFC 9207 authorization response issuer identifier, and AS discovery metadata extensions in the Hydra AS fork.
+Create a Kiro spec named "oidc4vci-haip-metadata" for implementing HAIP enforcement (PAR + PKCE S256), RFC 9207 authorization response issuer identifier, HAIP auto-enable of DPoP, and AS discovery metadata extensions in the Hydra AS fork.
 
 ## Prerequisites
 
-ALL previous specs (1–4) MUST be completed first. This is the capstone spec that:
-- Wires HAIP enforcement config to existing PAR and PKCE handlers
-- Adds RFC 9207 `iss` to authorize responses
-- Aggregates all feature flags into discovery metadata
+ALL previous specs (1–4) are COMPLETED. This is the capstone spec that wires everything together. Here's what exists:
+
+### From Spec 1 (RAR/Consent):
+- `RARConfigProvider` with `GetRAREnabled(ctx)`, `GetRARTypesSupported(ctx)` — in `fosite/config.go`, embedded in `Configurator`
+- `HAIPConfigProvider` with `GetHAIPEnforced(ctx)` — infrastructure only, enforcement NOT yet wired
+- `authorization_details_types_supported` metadata field already added to `oidcConfiguration` struct and populated in `discoverOidcConfiguration()` when RAR enabled
+- Config keys: `KeyRAREnabled`, `KeyRARTypesSupported`, `KeyHAIPEnforced` in `driver/config/provider.go`
+
+### From Spec 2 (DPoP):
+- `DPoPConfigProvider` with `GetDPoPEnabled(ctx)`, `GetDPoPSigningAlgValuesSupported(ctx)`, `GetDPoPNonceEnabled(ctx)`, `GetDPoPNonceLifespan(ctx)`, `GetDPoPProofMaxAge(ctx)`, `GetDPoPPARURLs(ctx)` — in `fosite/config.go`, embedded in `Configurator`
+- Config keys: `KeyDPoPEnabled`, `KeyDPoPSigningAlgValues`, etc. in `driver/config/provider.go`
+- Discovery metadata for DPoP (`dpop_signing_alg_values_supported`) NOT yet added — deferred to this spec
+
+### From Spec 3 (Pre-Auth):
+- `PreAuthorizedCodeConfigProvider` with `GetPreAuthorizedCodeEnabled(ctx)`, `GetPreAuthorizedCodeLifespan(ctx)`, `GetPreAuthorizedCodeAnonymousAccess(ctx)` — in `fosite/config.go`, embedded in `Configurator`
+- Config keys: `KeyPreAuthorizedCodeEnabled`, etc. in `driver/config/provider.go`
+- Discovery metadata for Pre-Auth (`pre-authorized_grant_anonymous_access_supported`, grant type in `grant_types_supported`) NOT yet added — deferred to this spec
+- Pre-Auth is independent of HAIP — `KeyPreAuthorizedCodeEnabled` is NOT auto-enabled by HAIP
+
+### From Spec 4 (Wallet Attestation):
+- `WalletAttestationConfigProvider` with `GetWalletAttestationEnabled(ctx)`, `GetWalletAttestationTrustAnchors(ctx)` — in `fosite/config.go`, embedded in `Configurator`
+- Config keys: `KeyWalletAttestationEnabled`, `KeyWalletAttestationTrustAnchors` in `driver/config/provider.go`
+- Discovery metadata for Wallet Attestation (`attest_jwt_client_auth` in `token_endpoint_auth_methods_supported`) NOT yet added — deferred to this spec
+- Wallet Attestation authenticator integrated via `fositex.Config.GetClientAuthenticationStrategy()` with `SetFositeInstance()` for fallback
+- Refresh token binding via `RefreshBindingHandler` storing `wallet_attestation_cnf_jkt` in session
+
+### Existing Hydra infrastructure:
+- PAR handler in `fosite/handler/par/` with `PushedAuthorizeRequestConfigProvider.EnforcePushedAuthorize(ctx)` — already exists
+- PKCE handler in `fosite/handler/pkce/` with `EnforcePKCEProvider.GetEnforcePKCE(ctx)` and `EnablePKCEPlainChallengeMethodProvider.GetEnablePKCEPlainChallengeMethod(ctx)` — already exists
+- `oidcConfiguration` struct in `oauth2/handler.go` with `discoverOidcConfiguration()` — already has `authorization_details_types_supported` from Spec 1
+- `fositex.Config` implements all config providers via embedded `*config.DefaultProvider`
 
 ## Scope
 
 This spec covers:
 
-### HAIP Enforcement
-1. `KeyHAIPEnforced` config integration: when true, `EnforcePushedAuthorize()` returns true, `GetEnablePKCEPlainChallengeMethod()` returns false, `GetEnforcePKCE()` returns true
-2. No new handlers — config-driven overrides on existing PAR and PKCE handlers
+### HAIP Enforcement (config-driven, no new handlers)
+1. Wire `KeyHAIPEnforced` to override PAR enforcement: when `GetHAIPEnforced(ctx)` returns true, `EnforcePushedAuthorize(ctx)` returns true
+2. Wire `KeyHAIPEnforced` to override PKCE enforcement: when `GetHAIPEnforced(ctx)` returns true, `GetEnforcePKCE(ctx)` returns true and `GetEnablePKCEPlainChallengeMethod(ctx)` returns false (S256 only)
+3. Wire `KeyHAIPEnforced` to auto-enable DPoP: when `GetHAIPEnforced(ctx)` returns true, `GetDPoPEnabled(ctx)` returns true and ES256 is in `GetDPoPSigningAlgValuesSupported(ctx)`
+4. Wire `KeyHAIPEnforced` to auto-enable RFC 9207 `iss` parameter
+5. Note: `KeyHAIPEnforced` does NOT auto-enable Pre-Auth (Pre-Auth is independent of HAIP)
+6. Note: `KeyHAIPEnforced` does NOT auto-enable Wallet Attestation (Wallet Attestation is independently configured)
 
 ### RFC 9207 Authorization Response Issuer Identifier
-3. Add `iss` parameter to success responses in `fosite/authorize_write.go` → `WriteAuthorizeResponse()`
-4. Add `iss` parameter to error responses in `fosite/authorize_error.go` → `WriteAuthorizeError()`
-5. Config key `KeyAuthResponseIssParameterEnabled` with HAIP auto-enable
-6. Value from `Configurator.GetIDTokenIssuer(ctx)`
+7. Add `iss` parameter to success responses in `fosite/authorize_write.go` → `WriteAuthorizeResponse()`
+8. Add `iss` parameter to error responses in `fosite/authorize_error.go` → `WriteAuthorizeError()`
+9. Config key `KeyAuthResponseIssParameterEnabled` with HAIP auto-enable
+10. Config provider `AuthResponseIssConfigProvider` with `GetAuthResponseIssParameterEnabled(ctx) bool`
+11. Value from `Configurator.GetIDTokenIssuer(ctx)` (already exists on Configurator)
 
-### Discovery Metadata Extensions
-7. New struct fields on `oidcConfiguration` in `oauth2/handler.go`:
-   - `pushed_authorization_request_endpoint` (PAR endpoint URL)
-   - `require_pushed_authorization_requests` (PAR enforcement)
-   - `pre-authorized_grant_anonymous_access_supported` (Pre-Auth)
-   - `authorization_details_types_supported` (RAR)
-   - `dpop_signing_alg_values_supported` (DPoP)
-   - `authorization_response_iss_parameter_supported` (RFC 9207)
-8. Modifications to existing dynamic lists:
-   - `grant_types_supported` += `urn:ietf:params:oauth:grant-type:pre-authorized_code`
-   - `token_endpoint_auth_methods_supported` += `attest_jwt_client_auth`
-   - `code_challenge_methods_supported` → `["S256"]` only when HAIP enforced
-9. All fields conditionally populated based on feature config flags
-10. Conformance with RFC 8414
-11. Feature documentation in `docs/features/` describing what was implemented: HAIP enforcement behavior, RFC 9207 iss parameter, all metadata fields added, configuration keys, and references to RFC 9126, RFC 9207, RFC 8414, HAIP spec, and the design docs
+### Discovery Metadata Extensions (all in `oauth2/handler.go`)
+12. New struct fields on `oidcConfiguration`:
+    - `pushed_authorization_request_endpoint` (string) — PAR endpoint URL
+    - `require_pushed_authorization_requests` (bool) — PAR enforcement
+    - `pre-authorized_grant_anonymous_access_supported` (bool) — Pre-Auth anonymous access
+    - `dpop_signing_alg_values_supported` ([]string) — DPoP algorithms
+    - `authorization_response_iss_parameter_supported` (bool) — RFC 9207
+    - Note: `authorization_details_types_supported` already exists from Spec 1
+13. Modifications to existing dynamic lists in `discoverOidcConfiguration()`:
+    - `grant_types_supported` += `urn:ietf:params:oauth:grant-type:pre-authorized_code` when Pre-Auth enabled
+    - `token_endpoint_auth_methods_supported` += `attest_jwt_client_auth` when Wallet Attestation enabled
+    - `code_challenge_methods_supported` → `["S256"]` only when HAIP enforced (remove `"plain"`)
+14. All new fields conditionally populated based on feature config flags with `omitempty` JSON tags
+15. Conformance with RFC 8414
+
+### Refresh Token Verification
+16. Verify `authorization_details` survives refresh token exchange (existing behavior from Spec 1, just needs verification test)
+17. Verify refresh tokens are issued in credential flows when client is eligible (existing behavior from Spec 3)
+
+### Feature Documentation
+18. `docs/features/haip-metadata.md` covering all of the above
 
 ## Key Design References
 
 Read these documents for authoritative design details:
-- #[[file:docs/ai-context/features/feature-metadata-extensions.md]] — Full metadata extensions design, conditional population logic, RFC 8414 conformance
-- #[[file:docs/ai-context/features/feature-rfc9207-iss.md]] — RFC 9207 implementation, inline modification approach, affected code paths
-- #[[file:docs/ai-context/features/feature-par.md]] — HAIP PAR enforcement, PKCE S256 enforcement, config integration
-- #[[file:docs/ai-context/01-hydra-internal-design.md]] — oidcConfiguration struct, discoverOidcConfiguration(), Configurator interface
+- #[[file:docs/ai-context/features/feature-metadata-extensions.md]] — Full metadata extensions design, conditional population logic, RFC 8414 conformance, `omitempty` behavior
+- #[[file:docs/ai-context/features/feature-rfc9207-iss.md]] — RFC 9207 implementation, inline modification approach, affected code paths, HAIP auto-enable pattern
+- #[[file:docs/ai-context/features/feature-par.md]] — HAIP PAR enforcement, PKCE S256 enforcement, config integration options (Option A preferred: extend `EnforcePushedAuthorize()`)
+- #[[file:docs/ai-context/01-hydra-internal-design.md]] — oidcConfiguration struct, discoverOidcConfiguration(), Configurator interface, PushedAuthorizeRequestConfigProvider
 - #[[file:docs/ai-context/04-fork-maintenance-strategy.md]] — Merge conflict handling for upstream-touching files
 - #[[file:docs/ai-context/02-oidc4vci-as-requirements.md]] — Requirements H2, H3, H4, V8
 
+Also reference the completed feature docs for what each feature provides:
+- #[[file:docs/features/rar-consent.md]] — RAR config, metadata field already added
+- #[[file:docs/features/dpop.md]] — DPoP config, metadata field deferred to this spec
+- #[[file:docs/features/pre-authorized-code.md]] — Pre-Auth config, metadata fields deferred to this spec, HAIP independence
+- #[[file:docs/features/wallet-attestation.md]] — Wallet Attestation config, metadata field deferred to this spec
+
+And the actual implementation files for the config providers:
+- #[[file:fositex/config.go]] — All config provider compile-time checks, `GetClientAuthenticationStrategy()`, `SetFositeInstance()`
+- #[[file:driver/config/provider.go]] — All `Key*` constants and `Get*` methods
+- #[[file:oauth2/handler.go]] — `oidcConfiguration` struct, `discoverOidcConfiguration()`, existing RAR metadata population pattern
+
 ## Requirements Covered
 
+From the parent requirements document (.kiro/specs/oidc4vci-as-capabilities/requirements.md):
 - Requirement 7: PAR Enforcement for HAIP (7.1–7.3)
 - Requirement 8: RFC 9207 Authorization Response Issuer Identifier (8.1–8.3)
 - Requirement 10: AS Metadata Extensions (10.1–10.6)
@@ -480,18 +530,42 @@ Read these documents for authoritative design details:
 
 ## Correctness Properties
 
+From the parent design document (.kiro/specs/oidc4vci-as-capabilities/design.md):
 - Property 18: HAIP PAR Enforcement
 - Property 19: Authorization Response iss Parameter
 - Property 21: HAIP PKCE S256 Enforcement
 - Property 22: Refresh Token Preserves authorization_details
 - Property 24: Refresh Token Issuance in Credential Flows
 
+Additional properties to define in this spec's design:
+- HAIP auto-enable of DPoP (when HAIP enforced, DPoP is enabled with ES256)
+- HAIP auto-enable of RFC 9207 iss parameter
+- Discovery metadata reflects all feature flags correctly (each field present/absent based on config)
+- `code_challenge_methods_supported` restricted to `["S256"]` under HAIP
+- `grant_types_supported` includes pre-auth grant type when enabled
+- `token_endpoint_auth_methods_supported` includes `attest_jwt_client_auth` when enabled
+
 ## Implementation Constraints
 
-- RFC 9207 changes touch upstream files (`fosite/authorize_write.go`, `fosite/authorize_error.go`) — keep changes minimal
-- Metadata changes touch `oauth2/handler.go` (HIGH conflict risk) — group in marked section
-- HAIP enforcement is config-driven — no new handler code, just config provider overrides
-- Keep existing experimental VC fields (`CredentialsEndpointDraft00`, `CredentialsSupportedDraft00`) as-is
-- Use `pgregory.net/rapid` for property-based tests
-- As a final task, create `docs/features/haip-metadata.md` documenting the implemented feature: HAIP enforcement (PAR + PKCE S256), RFC 9207 iss parameter behavior, all new discovery metadata fields with their conditions, configuration keys and defaults, and references to RFC 9126, RFC 9207, RFC 8414, RFC 9449, RFC 9396, HAIP spec, and the design docs in `docs/ai-context/`
+- RFC 9207 changes touch upstream files (`fosite/authorize_write.go`, `fosite/authorize_error.go`) — keep changes minimal, add `iss` parameter injection before the response mode switch
+- Metadata changes touch `oauth2/handler.go` (HIGH conflict risk) — group all new struct fields in a clearly marked `// OIDC4VCI extension` section after existing fields; group population logic in a separate block
+- HAIP enforcement is config-driven — modify `DefaultProvider` methods to check `KeyHAIPEnforced` and override individual settings. No new handler code needed.
+- The HAIP override pattern: `GetDPoPEnabled(ctx)` returns `true` if either `KeyDPoPEnabled` is explicitly true OR `KeyHAIPEnforced` is true. Same pattern for PAR enforcement, PKCE enforcement, and RFC 9207 iss.
+- Keep existing experimental VC fields (`CredentialsEndpointDraft00`, `CredentialsSupportedDraft00`) as-is — they're upstream
+- `AuthResponseIssConfigProvider` is a new config provider interface — follow the established pattern (define in `fosite/config.go`, embed in `Configurator`, implement on `DefaultProvider`, compile-time check in `fositex/config.go`)
+- The `iss` value comes from `Configurator.GetIDTokenIssuer(ctx)` which already exists — no new config key for the value itself
+- `pushed_authorization_request_endpoint` URL is computed from config (e.g., `IssuerURL + "/oauth2/par"`) — verify how the PAR endpoint URL is derived
+- Use `pgregory.net/rapid` for property-based tests, minimum 100 iterations per property
+- Copyright header: `// Copyright © 2026 Ory Corp` + `// SPDX-License-Identifier: Apache-2.0`
+- As a final task, create `docs/features/haip-metadata.md` documenting: HAIP enforcement behavior (what it auto-enables), RFC 9207 iss parameter (success + error responses), all new discovery metadata fields with their conditions, configuration keys and defaults, and references to RFC 9126, RFC 9207, RFC 8414, RFC 9449, RFC 9396, HAIP spec
+
+## Design Considerations to Address
+
+The design phase should explicitly address these implementation questions:
+1. How to implement the HAIP override pattern on `DefaultProvider`? Option A (preferred per feature-par.md): each `Get*` method checks `KeyHAIPEnforced` as a fallback. E.g., `GetDPoPEnabled(ctx)` returns `p.getProvider(ctx).Bool(KeyDPoPEnabled) || p.getProvider(ctx).Bool(KeyHAIPEnforced)`. This is simple and doesn't require config mutation.
+2. How to compute `pushed_authorization_request_endpoint` for metadata? The PAR endpoint is at `/oauth2/par` — derive from `IssuerURL` or `PublicURL`. Check if there's an existing method or if a new one is needed.
+3. Should `require_pushed_authorization_requests` reflect the HAIP override or only the standalone `EnforcePushedAuthorize` config? If HAIP is enforced, PAR is required — the metadata should reflect this.
+4. How to inject `iss` into authorize error responses? `WriteAuthorizeError` constructs `url.Values` from the error — the `iss` parameter needs to be added to these values before the redirect. Only for redirect errors — non-redirect errors (rendered as JSON) don't get `iss`.
+5. Should the `AuthResponseIssConfigProvider` be a separate interface or merged into `HAIPConfigProvider`? A separate interface is cleaner (single responsibility) and follows the pattern of other providers.
+6. How to handle the `code_challenge_methods_supported` restriction under HAIP? The existing `discoverOidcConfiguration()` hardcodes `["plain", "S256"]`. Under HAIP, this should be `["S256"]` only. The population logic needs to check `GetHAIPEnforced(ctx)` and conditionally exclude `"plain"`.
 ```

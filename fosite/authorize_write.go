@@ -19,6 +19,11 @@ func (f *Fosite) WriteAuthorizeResponse(ctx context.Context, rw http.ResponseWri
 	wh.Set("Cache-Control", "no-store")
 	wh.Set("Pragma", "no-cache")
 
+	// OIDC4VCI extension: RFC 9207 iss parameter
+	if f.Config.GetAuthResponseIssParameterEnabled(ctx) {
+		resp.AddParameter("iss", f.Config.GetIDTokenIssuer(ctx))
+	}
+
 	redir := ar.GetRedirectURI()
 	switch rm := ar.GetResponseMode(); rm {
 	case ResponseModeFormPost:

@@ -156,6 +156,7 @@ type Configurator interface {
 	DPoPConfigProvider
 	PreAuthorizedCodeConfigProvider
 	WalletAttestationConfigProvider
+	AuthResponseIssConfigProvider
 }
 
 func NewOAuth2Provider(s Storage, c Configurator) *Fosite {
