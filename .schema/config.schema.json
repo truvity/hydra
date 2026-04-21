@@ -827,6 +827,27 @@
               "type": "boolean",
               "description": "Sets whether PKCE should be enforced for public clients.",
               "examples": [true]
+            },
+            "plain_challenge_method": {
+              "type": "boolean",
+              "default": false,
+              "description": "Sets whether the plain PKCE challenge method is allowed. When HAIP is enforced, this is always false."
+            }
+          }
+        },
+        "par": {
+          "type": "object",
+          "description": "Configures Pushed Authorization Requests (RFC 9126) settings.",
+          "properties": {
+            "enforced": {
+              "type": "boolean",
+              "default": false,
+              "description": "Require all authorization requests to use PAR. When HAIP is enforced, this is always true."
+            },
+            "context_lifespan": {
+              "$ref": "#/definitions/duration",
+              "default": "5m",
+              "description": "Lifespan of PAR request contexts."
             }
           }
         },
@@ -1036,7 +1057,7 @@
       "examples": ["cpu"]
     },
     "tracing": {
-      "$ref": "https://raw.githubusercontent.com/ory/hydra/53625078/oryx/otelx/config.schema.json"
+      "$ref": "https://raw.githubusercontent.com/ory/hydra/a68a5177/oryx/otelx/config.schema.json"
     },
     "sqa": {
       "type": "object",
@@ -1145,6 +1166,17 @@
           "type": "boolean",
           "default": false,
           "description": "Enable HAIP enforcement (PAR required, PKCE S256 required). Infrastructure only — enforcement wired in oidc4vci-haip-metadata spec."
+        }
+      }
+    },
+    "rfc9207": {
+      "type": "object",
+      "description": "Configures RFC 9207 Authorization Response Issuer Identifier settings.",
+      "properties": {
+        "iss_parameter_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable RFC 9207 iss parameter in authorization responses. When HAIP is enforced, this is always true."
         }
       }
     },
