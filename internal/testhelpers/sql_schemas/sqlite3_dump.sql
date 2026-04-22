@@ -1,4 +1,4 @@
--- migrations hash: 63b6fa81949aac5da5978f8e9b425fd02df551aba4b4e4f5eaf7f2e7d43787085f63c4ffdc56c4cfe0f86efec52b8e407b781d57c74560eb97120b1be9078886
+-- migrations hash: 6ed51e430dde7869ef21a76351b2e3d2ee7ac181775ed29aaa2e09403f5e274741e901198026048e8c19d34f763f28dc3c36ec3ff3b4b19cd51968f2c5110d33
 
 CREATE TABLE "hydra_client"
 (
@@ -271,6 +271,24 @@ CREATE TABLE "hydra_oauth2_oidc" (
 );
 CREATE INDEX hydra_oauth2_oidc_challenge_id_idx ON hydra_oauth2_oidc (challenge_id, nid);
 CREATE INDEX hydra_oauth2_oidc_client_id_idx ON hydra_oauth2_oidc (client_id, nid);
+CREATE TABLE hydra_oauth2_par (
+    signature          VARCHAR(255) NOT NULL,
+    request_id         VARCHAR(40)  NOT NULL,
+    requested_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    client_id          VARCHAR(255) NOT NULL,
+    scope              TEXT         NOT NULL,
+    granted_scope      TEXT         NOT NULL,
+    form_data          TEXT         NOT NULL,
+    session_data       TEXT         NOT NULL,
+    subject            VARCHAR(255) NOT NULL DEFAULT '',
+    active             BOOLEAN      NOT NULL DEFAULT true,
+    requested_audience TEXT         NULL     DEFAULT '',
+    granted_audience   TEXT         NULL     DEFAULT '',
+    challenge_id       VARCHAR(40)  NULL,
+    nid                CHAR(36)     NOT NULL,
+    expires_at         TIMESTAMP    NULL,
+    PRIMARY KEY (signature)
+);
 CREATE TABLE "hydra_oauth2_pkce" (
     signature          VARCHAR(255) NOT NULL PRIMARY KEY,
     request_id         VARCHAR(40)  NOT NULL,
@@ -344,6 +362,8 @@ CREATE TABLE "hydra_oauth2_trusted_jwt_bearer_issuer" (
 CREATE INDEX hydra_oauth2_trusted_jwt_bearer_issuer_expires_at_idx ON hydra_oauth2_trusted_jwt_bearer_issuer (expires_at);
 CREATE UNIQUE INDEX hydra_oauth2_trusted_jwt_bearer_issuer_nid_uq_idx ON hydra_oauth2_trusted_jwt_bearer_issuer (nid ASC, key_id ASC, issuer ASC, subject ASC);
 CREATE INDEX idx_dpop_jti_expires_at ON hydra_oauth2_dpop_jti (nid, expires_at);
+CREATE INDEX idx_par_expires_at ON hydra_oauth2_par (nid, expires_at);
+CREATE INDEX idx_par_nid ON hydra_oauth2_par (nid);
 CREATE INDEX idx_preauth_code_expires_at ON hydra_oauth2_preauth_code (nid, expires_at);
 CREATE INDEX idx_preauth_code_nid ON hydra_oauth2_preauth_code (nid);
 CREATE TABLE "networks" (

@@ -66,6 +66,7 @@ const (
 	sqlTableRefresh tableName = "refresh"
 	sqlTableCode    tableName = "code"
 	sqlTablePKCE    tableName = "pkce"
+	sqlTablePAR     tableName = "par"
 )
 
 func (r OAuth2RefreshTable) TableName() string {
