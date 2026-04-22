@@ -38,12 +38,12 @@ type preauthSessionCreator interface {
 // preauthCodeData mirrors preauth.PreAuthorizedCodeData with the same Pop
 // struct tags and table name. Defined locally to break the import cycle.
 type preauthCodeData struct {
-	Signature                  string                     `db:"signature"`
+	ID                         string                     `db:"signature" json:"signature"`
 	NID                        uuid.UUID                  `db:"nid"`
 	RequestID                  string                     `db:"request_id"`
 	ClientID                   string                     `db:"client_id"`
-	RequestedScope             fosite.Arguments           `db:"requested_scope"`
-	GrantedScope               fosite.Arguments           `db:"granted_scope"`
+	RequestedScope             sqlxx.StringSliceJSONFormat `db:"requested_scope"`
+	GrantedScope               sqlxx.StringSliceJSONFormat `db:"granted_scope"`
 	CredentialConfigurationIDs sqlxx.StringSliceJSONFormat `db:"credential_configuration_ids"`
 	TxCodeHash                 string                     `db:"tx_code_hash"`
 	TxCodeInputMode            string                     `db:"tx_code_input_mode"`
@@ -202,7 +202,7 @@ func (h *Handler) createPreAuthorizedCode(w http.ResponseWriter, r *http.Request
 	expiresAt := now.Add(h.c.GetPreAuthorizedCodeLifespan(ctx))
 
 	// Parse scopes.
-	var requestedScope, grantedScope fosite.Arguments
+	var requestedScope, grantedScope sqlxx.StringSliceJSONFormat
 	if body.Scope != "" {
 		scopes := strings.Fields(body.Scope)
 		requestedScope = scopes
@@ -216,7 +216,7 @@ func (h *Handler) createPreAuthorizedCode(w http.ResponseWriter, r *http.Request
 	// Uses preauthCodeData (local mirror of preauth.PreAuthorizedCodeData)
 	// to avoid the import cycle.
 	data := &preauthCodeData{
-		Signature:                  signature,
+		ID:                         signature,
 		RequestID:                  puuid.New(),
 		ClientID:                   body.ClientID,
 		RequestedScope:             requestedScope,

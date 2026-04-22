@@ -18,6 +18,7 @@ import (
 	"pgregory.net/rapid"
 
 	"github.com/ory/hydra/v2/fosite"
+	foauth2 "github.com/ory/hydra/v2/fosite/handler/oauth2"
 	"github.com/ory/hydra/v2/fosite/handler/openid"
 	"github.com/ory/hydra/v2/fosite/handler/preauth"
 	"github.com/ory/hydra/v2/fosite/token/jwt"
@@ -68,6 +69,28 @@ func (m *mockStorage) InvalidatePreAuthorizedCode(_ context.Context, signature s
 		return fmt.Errorf("already redeemed")
 	}
 	d.Redeemed = true
+	return nil
+}
+
+// AccessTokenStorage returns self — mockStorage also implements oauth2.AccessTokenStorage.
+func (m *mockStorage) AccessTokenStorage() foauth2.AccessTokenStorage {
+	return m
+}
+
+// PreAuthorizedCodeStorage returns self — mockStorage implements the provider interface.
+func (m *mockStorage) PreAuthorizedCodeStorage() preauth.PreAuthorizedCodeStorage {
+	return m
+}
+
+func (m *mockStorage) CreateAccessTokenSession(_ context.Context, _ string, _ fosite.Requester) error {
+	return nil
+}
+
+func (m *mockStorage) GetAccessTokenSession(_ context.Context, _ string, _ fosite.Session) (fosite.Requester, error) {
+	return nil, fosite.ErrNotFound
+}
+
+func (m *mockStorage) DeleteAccessTokenSession(_ context.Context, _ string) error {
 	return nil
 }
 
@@ -246,7 +269,7 @@ func TestProperty1_ValidRedemption(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat(credIDs),
-				GrantedScope:               fosite.Arguments{"openid"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -367,7 +390,7 @@ func TestProperty2_TxCodeValidation(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
-				GrantedScope:               fosite.Arguments{"openid"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
 				SessionData:                marshalSession(t, sess),
 				TxCodeHash:                 storedHash,
 				Redeemed:                   false,
@@ -471,7 +494,7 @@ func TestProperty3_ClientIDValidation(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   storedClientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
-				GrantedScope:               fosite.Arguments{"openid"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -535,7 +558,7 @@ func TestProperty4_SingleUseEnforcement(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
-				GrantedScope:               fosite.Arguments{"openid"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -612,7 +635,7 @@ func TestProperty5_ExpiryEnforcement(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
-				GrantedScope:               fosite.Arguments{"openid"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  expiresAt,
@@ -673,7 +696,7 @@ func TestProperty6_AuthorizationDetailsSubsetValidation(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat(storedIDs),
-				GrantedScope:               fosite.Arguments{"openid"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -732,7 +755,7 @@ func TestProperty6_AuthorizationDetailsSubsetValidation(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat(storedIDs),
-				GrantedScope:               fosite.Arguments{"openid"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -790,7 +813,7 @@ func TestProperty6_AuthorizationDetailsSubsetValidation(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat(storedIDs),
-				GrantedScope:               fosite.Arguments{"openid"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -847,7 +870,7 @@ func TestProperty6_AuthorizationDetailsSubsetValidation(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat(storedIDs),
-				GrantedScope:               fosite.Arguments{"openid"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -900,7 +923,7 @@ func TestProperty7_RefreshTokenProhibitionAnonymous(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   "", // unbound
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
-				GrantedScope:               fosite.Arguments{"openid", "offline"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid", "offline"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -947,7 +970,7 @@ func TestProperty7_RefreshTokenProhibitionAnonymous(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
-				GrantedScope:               fosite.Arguments{"openid", "offline"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid", "offline"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -993,7 +1016,7 @@ func TestProperty7_RefreshTokenProhibitionAnonymous(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
-				GrantedScope:               fosite.Arguments{"openid", "offline"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid", "offline"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -1040,7 +1063,7 @@ func TestProperty7_RefreshTokenProhibitionAnonymous(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   clientID,
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
-				GrantedScope:               fosite.Arguments{"openid"}, // no offline scope
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"}, // no offline scope
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),
@@ -1139,8 +1162,8 @@ func TestProperty8_StorageRoundTrip(t *testing.T) {
 				TxCodeInputMode:            txCodeInputMode,
 				TxCodeLength:               txCodeLength,
 				SessionData:                sessionData,
-				RequestedScope:             requestedScope,
-				GrantedScope:               grantedScope,
+				RequestedScope:             sqlxx.StringSliceJSONFormat(requestedScope),
+				GrantedScope:               sqlxx.StringSliceJSONFormat(grantedScope),
 				Redeemed:                   false,
 				ExpiresAt:                  expiresAt,
 				RequestedAt:                requestedAt,
@@ -1186,7 +1209,7 @@ func TestProperty8_StorageRoundTrip(t *testing.T) {
 				Signature:                  signature,
 				ClientID:                   rapid.StringMatching(`client-[a-z0-9]{4}`).Draw(t, "clientID"),
 				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat(genCredentialConfigIDSet().Draw(t, "credIDs")),
-				GrantedScope:               fosite.Arguments{"openid"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
 				SessionData:                marshalSession(t, sess),
 				Redeemed:                   false,
 				ExpiresAt:                  time.Now().Add(30 * time.Minute),

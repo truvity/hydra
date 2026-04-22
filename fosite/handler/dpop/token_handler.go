@@ -58,9 +58,8 @@ func (h *Handler) HandleTokenEndpointRequest(ctx context.Context, requester fosi
 	// Get session for binding checks.
 	session, ok := requester.GetSession().(fosite.ExtraClaimsSession)
 	if !ok {
-		// Session doesn't support extra claims — store JKT in form for
-		// PopulateTokenEndpointResponse and return.
-		form.Set("__dpop_validated_jkt", jkt)
+		// Session doesn't support extra claims — cannot store cnf.jkt.
+		// This shouldn't happen with Hydra's Session type.
 		return nil
 	}
 
@@ -92,16 +91,20 @@ func (h *Handler) HandleTokenEndpointRequest(ctx context.Context, requester fosi
 		}
 	}
 
-	// Store the validated JKT in the session extra for PopulateTokenEndpointResponse.
-	// Using session extra as a transport mechanism since context is immutable.
-	extra["__dpop_validated_jkt"] = jkt
+	// Store the confirmation claim directly in the session so it is persisted
+	// when the grant-type handler (e.g., auth code) stores the access token
+	// session. Previously this was deferred to PopulateTokenEndpointResponse,
+	// but that runs AFTER the access token is already stored, so the cnf claim
+	// was lost.
+	extra["cnf"] = map[string]interface{}{"jkt": jkt}
 
 	return nil
 }
 
-// PopulateTokenEndpointResponse sets cnf.jkt in the session, sets token_type
-// to DPoP, binds refresh tokens for public clients, and generates a fresh
-// nonce when nonces are enabled.
+// PopulateTokenEndpointResponse sets token_type to DPoP, binds refresh tokens
+// for public clients, and generates a fresh nonce when nonces are enabled.
+// The cnf.jkt claim is already set in the session by HandleTokenEndpointRequest
+// (before the access token is persisted by the grant-type handler).
 func (h *Handler) PopulateTokenEndpointResponse(ctx context.Context, requester fosite.AccessRequester, responder fosite.AccessResponder) error {
 	form := requester.GetRequestForm()
 
@@ -110,29 +113,20 @@ func (h *Handler) PopulateTokenEndpointResponse(ctx context.Context, requester f
 		return errors.WithStack(fosite.ErrUnknownRequest)
 	}
 
-	// Read the validated JKT from session extra (stored by HandleTokenEndpointRequest).
+	// Read the JKT from cnf.jkt (set by HandleTokenEndpointRequest).
 	session, ok := requester.GetSession().(fosite.ExtraClaimsSession)
 	if !ok {
 		return errors.WithStack(fosite.ErrUnknownRequest)
 	}
-
 	extra := session.GetExtraClaims()
-
-	jkt, _ := extra["__dpop_validated_jkt"].(string)
-	if jkt == "" {
-		// Fallback: check request form (for sessions that don't support extra claims
-		// in HandleTokenEndpointRequest).
-		jkt = form.Get("__dpop_validated_jkt")
+	cnf, _ := extra["cnf"].(map[string]interface{})
+	if cnf == nil {
+		return errors.WithStack(fosite.ErrUnknownRequest)
 	}
+	jkt, _ := cnf["jkt"].(string)
 	if jkt == "" {
 		return errors.WithStack(fosite.ErrUnknownRequest)
 	}
-
-	// Clean up the transport key from session extra.
-	delete(extra, "__dpop_validated_jkt")
-
-	// Store confirmation claim: cnf.jkt for introspection propagation.
-	extra["cnf"] = map[string]interface{}{"jkt": jkt}
 
 	// Set token type to DPoP.
 	responder.SetTokenType("DPoP")
@@ -144,7 +138,7 @@ func (h *Handler) PopulateTokenEndpointResponse(ctx context.Context, requester f
 
 	// If nonces are enabled, generate a fresh nonce for the response header.
 	if h.Config.GetDPoPNonceEnabled(ctx) {
-		freshNonce, err := h.NonceStore.CreateDPoPNonce(ctx)
+		freshNonce, err := h.nonceStorage().CreateDPoPNonce(ctx)
 		if err != nil {
 			return errors.WithStack(
 				ErrInvalidDPoPProof.

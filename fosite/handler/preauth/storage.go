@@ -11,9 +11,13 @@ import (
 	"github.com/gofrs/uuid"
 
 	"github.com/ory/x/sqlxx"
-
-	"github.com/ory/hydra/v2/fosite"
 )
+
+// PreAuthorizedCodeStorageProvider provides access to PreAuthorizedCodeStorage.
+// This follows the same provider pattern as oauth2.AccessTokenStorageProvider.
+type PreAuthorizedCodeStorageProvider interface {
+	PreAuthorizedCodeStorage() PreAuthorizedCodeStorage
+}
 
 // PreAuthorizedCodeStorage provides lifecycle management for pre-authorized code
 // sessions: creation (admin API), retrieval and atomic invalidation (token endpoint).
@@ -39,8 +43,8 @@ type PreAuthorizedCodeData struct {
 	NID                        uuid.UUID                   `db:"nid"`
 	RequestID                  string                      `db:"request_id"`
 	ClientID                   string                      `db:"client_id"`
-	RequestedScope             fosite.Arguments            `db:"requested_scope"`
-	GrantedScope               fosite.Arguments            `db:"granted_scope"`
+	RequestedScope             sqlxx.StringSliceJSONFormat  `db:"requested_scope"`
+	GrantedScope               sqlxx.StringSliceJSONFormat  `db:"granted_scope"`
 	CredentialConfigurationIDs sqlxx.StringSliceJSONFormat  `db:"credential_configuration_ids"`
 	TxCodeHash                 string                      `db:"tx_code_hash"`
 	TxCodeInputMode            string                      `db:"tx_code_input_mode"`

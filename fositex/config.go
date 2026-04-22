@@ -86,6 +86,7 @@ var (
 		compose.RFC8628DeviceFactory,
 		compose.RFC8628DeviceAuthorizationTokenFactory,
 		compose.OpenIDConnectDeviceFactory,
+		compose.PushedAuthorizeHandlerFactory,
 	}
 )
 

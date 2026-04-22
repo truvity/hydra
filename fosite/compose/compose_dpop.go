@@ -12,6 +12,6 @@ import (
 func DPoPFactory(config fosite.Configurator, storage fosite.Storage, _ interface{}) interface{} {
 	return &dpop.Handler{
 		Config:     config.(dpop.DPoPConfigProvider),
-		NonceStore: storage.(dpop.DPoPNonceStorage),
+		NonceStore: storage.(dpop.DPoPNonceStorageProvider),
 	}
 }

@@ -37,7 +37,12 @@ const iatFutureTolerance = 5 * time.Second
 // Handler validates DPoP proofs on token and PAR requests per RFC 9449.
 type Handler struct {
 	Config     DPoPConfigProvider
-	NonceStore DPoPNonceStorage
+	NonceStore DPoPNonceStorageProvider
+}
+
+// nonceStorage returns the concrete DPoPNonceStorage from the provider.
+func (h *Handler) nonceStorage() DPoPNonceStorage {
+	return h.NonceStore.DPoPNonceStorage()
 }
 
 // Compile-time interface satisfaction checks.
@@ -257,7 +262,7 @@ func (h *Handler) validateDPoPProof(ctx context.Context, form url.Values, allowe
 	// Check 10: Nonce validation when enabled.
 	if h.Config.GetDPoPNonceEnabled(ctx) {
 		if claims.Nonce == "" {
-			freshNonce, nonceErr := h.NonceStore.CreateDPoPNonce(ctx)
+			freshNonce, nonceErr := h.nonceStorage().CreateDPoPNonce(ctx)
 			if nonceErr != nil {
 				return "", ctx, errors.WithStack(
 					ErrInvalidDPoPProof.
@@ -274,7 +279,7 @@ func (h *Handler) validateDPoPProof(ctx context.Context, form url.Values, allowe
 			)
 		}
 
-		valid, nonceErr := h.NonceStore.ValidateDPoPNonce(ctx, claims.Nonce)
+		valid, nonceErr := h.nonceStorage().ValidateDPoPNonce(ctx, claims.Nonce)
 		if nonceErr != nil {
 			return "", ctx, errors.WithStack(
 				ErrInvalidDPoPProof.
@@ -283,7 +288,7 @@ func (h *Handler) validateDPoPProof(ctx context.Context, form url.Values, allowe
 			)
 		}
 		if !valid {
-			freshNonce, createErr := h.NonceStore.CreateDPoPNonce(ctx)
+			freshNonce, createErr := h.nonceStorage().CreateDPoPNonce(ctx)
 			if createErr != nil {
 				return "", ctx, errors.WithStack(
 					ErrInvalidDPoPProof.
@@ -321,7 +326,7 @@ func (h *Handler) validateDPoPProof(ctx context.Context, form url.Values, allowe
 	}
 
 	// Check 12: JTI uniqueness.
-	used, err := h.NonceStore.IsJTIUsed(ctx, claims.JTI)
+	used, err := h.nonceStorage().IsJTIUsed(ctx, claims.JTI)
 	if err != nil {
 		return "", ctx, errors.WithStack(
 			ErrInvalidDPoPProof.
@@ -336,7 +341,7 @@ func (h *Handler) validateDPoPProof(ctx context.Context, form url.Values, allowe
 				WithDebugf("jti=%q is a replay", claims.JTI),
 		)
 	}
-	if err := h.NonceStore.MarkJTIUsed(ctx, claims.JTI, now.Add(maxAge)); err != nil {
+	if err := h.nonceStorage().MarkJTIUsed(ctx, claims.JTI, now.Add(maxAge)); err != nil {
 		return "", ctx, errors.WithStack(
 			ErrInvalidDPoPProof.
 				WithHint("Failed to record DPoP proof JTI.").

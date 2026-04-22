@@ -96,6 +96,7 @@ type RegistrySQL struct {
 
 	keyManager     jwk.Manager
 	consentManager consent.Manager
+	parStore       fosite.PARStorage
 
 	initialPing func(ctx context.Context, l *logrusx.Logger, p *sql.BasePersister) error
 	middlewares []negroni.Handler

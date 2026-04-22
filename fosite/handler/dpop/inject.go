@@ -3,7 +3,10 @@
 
 package dpop
 
-import "net/http"
+import (
+	"net/http"
+	"net/url"
+)
 
 // contextKey is an unexported type for context keys defined in this package,
 // preventing collisions with keys defined in other packages.
@@ -27,9 +30,19 @@ const DPoPNonceContextKey contextKey = "dpop_nonce"
 // If no DPoP header is present, the form is left unchanged.
 func InjectDPoPHeader(r *http.Request) {
 	dpopValues := r.Header.Values("DPoP")
+	if len(dpopValues) == 0 {
+		return
+	}
+	// Ensure the form is parsed before injecting.
+	if r.PostForm == nil {
+		_ = r.ParseForm()
+	}
+	if r.PostForm == nil {
+		r.PostForm = make(url.Values)
+	}
 	if len(dpopValues) > 1 {
 		r.PostForm.Set("dpop_proof_error", "multiple_headers")
-	} else if len(dpopValues) == 1 {
+	} else {
 		r.PostForm.Set("dpop_proof", dpopValues[0])
 	}
 }

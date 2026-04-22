@@ -17,6 +17,8 @@ import (
 
 	"github.com/ory/hydra/v2/fosite"
 	"github.com/ory/hydra/v2/fosite/handler/oauth2"
+	"github.com/ory/hydra/v2/fosite/handler/openid"
+	"github.com/ory/hydra/v2/fosite/token/jwt"
 	oauth2session "github.com/ory/hydra/v2/oauth2"
 )
 
@@ -35,7 +37,10 @@ type PreAuthorizedCodeConfigProvider = fosite.PreAuthorizedCodeConfigProvider
 // grant type (urn:ietf:params:oauth:grant-type:pre-authorized_code).
 type Handler struct {
 	Config   PreAuthorizedCodeConfigProvider
-	Storage  PreAuthorizedCodeStorage
+	Storage  interface {
+		PreAuthorizedCodeStorageProvider
+		oauth2.AccessTokenStorageProvider
+	}
 	Strategy CoreStrategy
 }
 
@@ -68,7 +73,7 @@ func (h *Handler) HandleTokenEndpointRequest(ctx context.Context, requester fosi
 	signature := h.Strategy.AuthorizeCodeSignature(ctx, code)
 
 	// 3. Load stored grant data.
-	data, err := h.Storage.GetPreAuthorizedCodeSession(ctx, signature)
+	data, err := h.Storage.PreAuthorizedCodeStorage().GetPreAuthorizedCodeSession(ctx, signature)
 	if err != nil {
 		if errors.Is(err, fosite.ErrNotFound) {
 			return errorsx.WithStack(fosite.ErrInvalidGrant.WithHint("pre-authorized code not found"))
@@ -100,7 +105,7 @@ func (h *Handler) HandleTokenEndpointRequest(ctx context.Context, requester fosi
 	}
 
 	// 8. Atomic invalidation.
-	if err := h.Storage.InvalidatePreAuthorizedCode(ctx, signature); err != nil {
+	if err := h.Storage.PreAuthorizedCodeStorage().InvalidatePreAuthorizedCode(ctx, signature); err != nil {
 		return errorsx.WithStack(fosite.ErrServerError.WithWrap(err).WithDebug(err.Error()))
 	}
 
@@ -117,7 +122,14 @@ func (h *Handler) HandleTokenEndpointRequest(ctx context.Context, requester fosi
 		return errorsx.WithStack(fosite.ErrServerError.WithWrap(err).WithDebugf("failed to deserialize session data: %s", err.Error()))
 	}
 
-	// Ensure Extra map is initialized.
+	// Ensure DefaultSession and Extra map are initialized.
+	if session.DefaultSession == nil {
+		session.DefaultSession = &openid.DefaultSession{
+			Claims:    new(jwt.IDTokenClaims),
+			Headers:   new(jwt.Headers),
+			ExpiresAt: make(map[fosite.TokenType]time.Time),
+		}
+	}
 	if session.Extra == nil {
 		session.Extra = make(map[string]interface{})
 	}
@@ -238,7 +250,12 @@ func (h *Handler) PopulateTokenEndpointResponse(ctx context.Context, requester f
 	// since PreAuthorizedCodeConfigProvider does not include GetAccessTokenLifespan.
 	var atLifespan time.Duration
 	if p, ok := h.Config.(fosite.AccessTokenLifespanProvider); ok {
-		atLifespan = fosite.GetEffectiveLifespan(requester.GetClient(), fosite.GrantTypeAuthorizationCode, fosite.AccessToken, p.GetAccessTokenLifespan(ctx))
+		defaultLifespan := p.GetAccessTokenLifespan(ctx)
+		if requester.GetClient() != nil {
+			atLifespan = fosite.GetEffectiveLifespan(requester.GetClient(), fosite.GrantTypeAuthorizationCode, fosite.AccessToken, defaultLifespan)
+		} else {
+			atLifespan = defaultLifespan
+		}
 	} else {
 		atLifespan = time.Hour
 	}
@@ -247,8 +264,13 @@ func (h *Handler) PopulateTokenEndpointResponse(ctx context.Context, requester f
 	requester.GetSession().SetExpiresAt(fosite.AccessToken, time.Now().UTC().Add(atLifespan).Round(time.Second))
 
 	// Issue access token.
-	access, _, err := h.Strategy.GenerateAccessToken(ctx, requester)
+	access, accessSignature, err := h.Strategy.GenerateAccessToken(ctx, requester)
 	if err != nil {
+		return errorsx.WithStack(fosite.ErrServerError.WithWrap(err).WithDebug(err.Error()))
+	}
+
+	// Store the access token session for introspection.
+	if err := h.Storage.AccessTokenStorage().CreateAccessTokenSession(ctx, accessSignature, requester.Sanitize([]string{})); err != nil {
 		return errorsx.WithStack(fosite.ErrServerError.WithWrap(err).WithDebug(err.Error()))
 	}
 

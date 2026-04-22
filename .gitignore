@@ -34,3 +34,4 @@ BENCHMARKS.md
 *.sqlite
 hydra
 **/testdata/rapid/
+*.code-workspace

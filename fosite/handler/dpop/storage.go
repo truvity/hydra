@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+// DPoPNonceStorageProvider provides access to DPoPNonceStorage.
+// This follows the same provider pattern as oauth2.AccessTokenStorageProvider.
+type DPoPNonceStorageProvider interface {
+	DPoPNonceStorage() DPoPNonceStorage
+}
+
 // DPoPNonceStorage provides JTI replay detection and nonce management for
 // DPoP proof validation per RFC 9449.
 type DPoPNonceStorage interface {

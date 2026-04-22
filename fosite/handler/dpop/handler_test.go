@@ -101,6 +101,10 @@ func newMockNonceStorage() *mockDPoPNonceStorage {
 	return &mockDPoPNonceStorage{usedJTIs: make(map[string]bool)}
 }
 
+func (m *mockDPoPNonceStorage) DPoPNonceStorage() dpop.DPoPNonceStorage {
+	return m
+}
+
 func (m *mockDPoPNonceStorage) IsJTIUsed(_ context.Context, jti string) (bool, error) {
 	return m.usedJTIs[jti], nil
 }
@@ -729,6 +733,10 @@ func newMockNonceStorageWithNonce(validNonce, freshNonce string) *mockDPoPNonceS
 	}
 }
 
+func (m *mockDPoPNonceStorageWithNonce) DPoPNonceStorage() dpop.DPoPNonceStorage {
+	return m
+}
+
 func (m *mockDPoPNonceStorageWithNonce) IsJTIUsed(_ context.Context, jti string) (bool, error) {
 	return m.usedJTIs[jti], nil
 }
@@ -956,10 +964,12 @@ func TestProperty8_DPoPJKTBindingAtTokenEndpoint(t *testing.T) {
 			if matching {
 				require.NoError(t, err, "matching dpop_jkt should be accepted")
 
-				// Verify the validated JKT was stored in session extra.
+				// Verify the cnf.jkt was stored in session extra.
 				expectedJKT := computeJKT(t, &keyA.PublicKey)
-				storedJKT, ok := session.Extra["__dpop_validated_jkt"].(string)
-				require.True(t, ok, "validated JKT should be stored in session extra")
+				cnf, ok := session.Extra["cnf"].(map[string]interface{})
+				require.True(t, ok, "cnf should be stored in session extra")
+				storedJKT, ok := cnf["jkt"].(string)
+				require.True(t, ok, "cnf.jkt should be a string")
 				assert.Equal(t, expectedJKT, storedJKT,
 					"stored JKT should match keyA's thumbprint")
 			} else {
