@@ -18,6 +18,80 @@ consent app, giving you absolute control over the user interface and experience.
 
 ---
 
+## OIDC4VCI Fork
+
+This repository is a **fork of Ory Hydra** that extends the authorization
+server with features required to act as the OAuth 2.0 Authorization Server
+component in an [OpenID for Verifiable Credential Issuance (OIDC4VCI 1.0)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
+deployment. The extensions are implemented as additive changes on top of
+upstream Hydra — no existing behavior is removed or altered.
+
+### Added capabilities
+
+- **Rich Authorization Requests (RFC 9396)** — `authorization_details` on
+  authorize, PAR, and token endpoints
+- **DPoP (RFC 9449)** — sender-constrained access tokens with nonce exchange
+- **Pre-Authorized Code grant** — OIDC4VCI §5.1.4
+- **Pushed Authorization Requests (RFC 9126)** — enforced under HAIP
+- **HAIP profile enforcement** — DPoP + PAR + PKCE S256 + `iss` parameter
+- **Wallet Attestation** — `attest_jwt_client_auth` per
+  draft-ietf-oauth-attestation-based-client-auth-07
+- **`dc+sd-jwt` / `vc+sd-jwt` credential format support** in the mock issuer
+
+### Documentation
+
+| Document | Description |
+|---|---|
+| [`docs/features/`](docs/features/) | Feature-level documentation (DPoP, RAR, HAIP metadata, wallet attestation, etc.) |
+| [`docs/integration/oidc4vci-integration-guide.md`](docs/integration/oidc4vci-integration-guide.md) | End-to-end integration guide for Credential Issuers |
+| [`docs/integration/consent-app-authorization-details.md`](docs/integration/consent-app-authorization-details.md) | How to handle `authorization_details` in the Consent App |
+| [`docs/integration/secret-management.md`](docs/integration/secret-management.md) | Secret management and key rotation |
+
+### Running locally
+
+The quickstart stack (Hydra + PostgreSQL + Consent Node + Mock Issuer) is
+managed by `quickstart-oidc4vci.yml`. A helper script builds Hydra via
+GoReleaser and brings everything up:
+
+```bash
+./build-and-run-oidc4vci-local.sh
+```
+
+On subsequent runs, skip the GoReleaser build if the image is already current:
+
+```bash
+SKIP_BUILD=1 ./build-and-run-oidc4vci-local.sh
+```
+
+To expose the stack via ngrok (e.g. for the OpenID conformance test suite),
+export the public URLs before running:
+
+```bash
+export HYDRA_PUBLIC_URL=https://your-hydra.ngrok-free.dev
+export MOCK_ISSUER_URL=https://your-issuer.ngrok.dev
+./build-and-run-oidc4vci-local.sh
+```
+
+Ctrl-C tears down the entire compose stack.
+
+### E2E tests
+
+External end-to-end tests live in [`test/oidc4vci-external/`](test/oidc4vci-external/).
+They run against the live compose stack (not in-process) and cover the full
+OIDC4VCI authorization code flow: PAR, DPoP, RAR, `private_key_jwt` /
+`attest_jwt_client_auth` client authentication, and credential issuance via
+the mock issuer.
+
+```bash
+go test -v -count=1 -timeout=60s ./test/oidc4vci-external/...
+```
+
+See [`test/oidc4vci-external/README.md`](test/oidc4vci-external/README.md) for
+details on environment variables, cached test data, and the HAIP attester key
+generator.
+
+---
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
