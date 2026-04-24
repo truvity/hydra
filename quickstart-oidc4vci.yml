@@ -1,0 +1,132 @@
+###########################################################################
+#######             FOR DEMONSTRATION PURPOSES ONLY                 #######
+###########################################################################
+#                                                                         #
+# OIDC4VCI Quickstart — Hydra + PostgreSQL                                #
+#                                                                         #
+# Enables all OIDC4VCI features: Pre-Authorized Code, DPoP, PAR, RAR,     #
+# HAIP profile, Wallet Attestation, JWT access tokens.                    #
+#                                                                         #
+# Usage (local only):                                                     #
+#   ./build-and-run-oidc4vci-local.sh                                     #
+#                                                                         #
+# Usage (with ngrok tunnels):                                             #
+#   ./run-ngrok-oidc4vci.sh                                               #
+#                                                                         #
+# Env vars read at compose time:                                          #
+#   HYDRA_IMAGE_TAG            Tag of oryd/hydra image (default: local)   #
+#   HYDRA_PUBLIC_URL           Public hydra URL (default:                 #
+#                                http://127.0.0.1:4444).                  #
+#                              When set (e.g. via ngrok), this URL is     #
+#                              written into hydra's issuer claim + all    #
+#                              discovery metadata, and used as            #
+#                              authorization_servers[0] in the mock       #
+#                              issuer metadata.                           #
+#   MOCK_ISSUER_URL            Public mock-issuer URL (default:           #
+#                                http://127.0.0.1:4448).                  #
+#                              Used as `credential_issuer` in the mock    #
+#                              issuer metadata document.                  #
+#                                                                         #
+###########################################################################
+services:
+  postgresd:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "hydra"]
+      interval: 1s
+      timeout: 30s
+      retries: 30
+    environment:
+      - PGUSER=hydra
+      - POSTGRES_USER=hydra
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=hydra
+    volumes:
+      - hydra-postgres:/var/lib/postgresql/data
+    networks:
+      - intranet
+
+  hydra-migrate:
+    image: oryd/hydra:${HYDRA_IMAGE_TAG:-local}
+    command: migrate -c /etc/config/hydra/hydra-local-oidc4vci-config.yml sql up -e --yes
+    environment:
+      - DSN=postgres://hydra:secret@postgresd:5432/hydra?sslmode=disable&max_conns=20&max_idle_conns=4
+    volumes:
+      - type: bind
+        source: ./contrib/quickstart/oidc4vci
+        target: /etc/config/hydra
+    restart: on-failure
+    depends_on:
+      postgresd:
+        condition: service_healthy
+    networks:
+      - intranet
+
+  hydra:
+    image: oryd/hydra:${HYDRA_IMAGE_TAG:-local}
+    ports:
+      - "4444:4444" # Public port
+      - "4445:4445" # Admin port
+    command: serve -c /etc/config/hydra/hydra-local-oidc4vci-config.yml all --dev
+    environment:
+      - DSN=postgres://hydra:secret@postgresd:5432/hydra?sslmode=disable&max_conns=20&max_idle_conns=4
+      # ory/x configx: env vars override yaml config. dots -> underscores,
+      # uppercase. When HYDRA_PUBLIC_URL is empty, the yaml defaults win.
+      - URLS_SELF_ISSUER=${HYDRA_PUBLIC_URL:-http://127.0.0.1:4444}
+      - URLS_SELF_PUBLIC=${HYDRA_PUBLIC_URL:-http://127.0.0.1:4444}
+    volumes:
+      - type: bind
+        source: ./contrib/quickstart/oidc4vci
+        target: /etc/config/hydra
+    restart: unless-stopped
+    depends_on:
+      hydra-migrate:
+        condition: service_completed_successfully
+    networks:
+      - intranet
+
+  consent:
+    build:
+      context: ../hydra-login-consent-node
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - HYDRA_ADMIN_URL=http://hydra:4445
+    restart: unless-stopped
+    networks:
+      - intranet
+
+  mock-issuer:
+    image: oryd/hydra-login-consent-node:v26.2.0
+    # build:
+    #  context: ./test/oidc4vci-external/mock-issuer
+    #  dockerfile: Dockerfile
+    ports:
+      - "4448:4448"
+    environment:
+      # Listen on all interfaces inside the container.
+      - MOCK_ISSUER_LISTEN_ADDR=:4448
+      # Public issuer URL advertised to wallets. When not overridden, wallets
+      # on the host can still reach this via 127.0.0.1:4448.
+      - MOCK_ISSUER_URL=${MOCK_ISSUER_URL:-http://127.0.0.1:4448}
+      # authorization_servers entry in issuer metadata — must be the URL that
+      # wallets (running outside the compose network) can reach hydra at.
+      - MOCK_ISSUER_AUTH_SERVER_URL=${HYDRA_PUBLIC_URL:-http://127.0.0.1:4444}
+      # Hydra admin API for introspection — always over the compose network.
+      - MOCK_ISSUER_AUTH_SERVER_ADMIN_URL=http://hydra:4445
+      - MOCK_ISSUER_NONCE_TTL=300
+    restart: unless-stopped
+    depends_on:
+      hydra:
+        condition: service_started
+    networks:
+      - intranet
+
+networks:
+  intranet:
+
+volumes:
+  hydra-postgres:

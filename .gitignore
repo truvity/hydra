@@ -35,3 +35,6 @@ BENCHMARKS.md
 hydra
 **/testdata/rapid/
 *.code-workspace
+test/oidc4vci-external/testdata/
+test/oidc4vci-external/attester-keys/
+ngrok.yml

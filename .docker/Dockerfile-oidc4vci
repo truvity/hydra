@@ -1,0 +1,28 @@
+FROM golang:1.26 AS builder
+
+WORKDIR /go/src/github.com/ory/hydra
+
+COPY oryx/go.mod oryx/go.mod
+COPY oryx/go.sum oryx/go.sum
+
+RUN apt-get update && apt-get upgrade -y &&\
+    mkdir -p ./internal/httpclient
+
+COPY go.mod go.sum ./
+COPY internal/httpclient/go.* ./internal/httpclient/
+
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build -ldflags="-extldflags=-static" -o /usr/bin/hydra
+
+#########################
+
+FROM gcr.io/distroless/static-debian12:debug-nonroot AS runner
+
+COPY --from=builder /usr/bin/hydra /usr/bin/hydra
+
+EXPOSE 4444 4445
+
+ENTRYPOINT ["hydra"]
+CMD ["serve", "all"]

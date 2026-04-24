@@ -1,0 +1,13 @@
+FROM gcr.io/distroless/static-debian12:nonroot
+
+# GoReleaser (dockers_v2) stages pre-built binaries per platform in the build
+# context under $TARGETPLATFORM (e.g. linux/amd64/hydra, linux/arm64/hydra).
+ARG TARGETPLATFORM
+
+COPY $TARGETPLATFORM/hydra /usr/bin/hydra
+
+# 4444 = public service endpoint, 4445 = admin service endpoint
+EXPOSE 4444 4445
+
+ENTRYPOINT ["hydra"]
+CMD ["serve", "all"]
