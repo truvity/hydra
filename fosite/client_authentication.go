@@ -181,10 +181,20 @@ func (f *Fosite) DefaultClientAuthenticationStrategy(ctx context.Context, r *htt
 			return nil, err
 		}
 
-		if !audienceMatchesTokenURLs(claims, f.Config.GetTokenURLs(ctx)) {
+		// Accept both the token endpoint URL (strict RFC 7523 §3 reading) and
+		// the issuer URL (common convention — RFC 7523 uses "a value
+		// identifying the authorization server", which many clients encode
+		// as the issuer URL rather than the token endpoint). Keep the
+		// sources of truth — GetTokenURLs and GetIDTokenIssuer — separate.
+		acceptedAudiences := append([]string{}, f.Config.GetTokenURLs(ctx)...)
+		if iss := f.Config.GetIDTokenIssuer(ctx); iss != "" {
+			acceptedAudiences = append(acceptedAudiences, strings.TrimRight(iss, "/"))
+		}
+
+		if !audienceMatchesTokenURLs(claims, acceptedAudiences) {
 			return nil, errorsx.WithStack(ErrInvalidClient.WithHintf(
-				"Claim 'audience' from 'client_assertion' must match the authorization server's token endpoint '%s'.",
-				strings.Join(f.Config.GetTokenURLs(ctx), "' or '")))
+				"Claim 'audience' from 'client_assertion' must match the authorization server's token endpoint or issuer URL. Accepted values: '%s'.",
+				strings.Join(acceptedAudiences, "', '")))
 		}
 
 		return client, nil

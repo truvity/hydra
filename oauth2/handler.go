@@ -1241,6 +1241,27 @@ func (h *Handler) oauth2TokenExchange(w http.ResponseWriter, r *http.Request) {
 	ctx = context.WithValue(ctx, dpop.DPoPNonceContextKey, &dpopNonce)
 	dpop.InjectDPoPHeader(r)
 
+	// OIDC4VCI extension: Early DPoP nonce validation.
+	// When DPoP nonces are enabled and a DPoP proof is present, validate the
+	// nonce BEFORE NewAccessRequest runs. This is critical because
+	// NewAccessRequest calls HandleTokenEndpointRequest for all handlers —
+	// the auth code handler consumes the authorization code (single-use),
+	// and if the DPoP handler later returns use_dpop_nonce, the client
+	// cannot retry because the code is already consumed.
+	if err := dpop.ValidateNonceEarly(ctx, r, h.c, &dpopNonce); err != nil {
+		// Generate a fresh nonce for the client to use on retry.
+		if ns, ok := h.r.(interface{ DPoPNonceStorage() dpop.DPoPNonceStorage }); ok {
+			if freshNonce, nonceErr := ns.DPoPNonceStorage().CreateDPoPNonce(ctx); nonceErr == nil {
+				dpopNonce = freshNonce
+			}
+		}
+		if dpopNonce != "" {
+			w.Header().Set("DPoP-Nonce", dpopNonce)
+		}
+		h.r.OAuth2Provider().WriteAccessError(ctx, w, nil, err)
+		return
+	}
+
 	accessRequest, err := h.r.OAuth2Provider().NewAccessRequest(ctx, r, session)
 	if err != nil {
 		x.LogError(r, err, h.r.Logger())

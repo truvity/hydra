@@ -211,10 +211,15 @@ func (c *Config) GetClientAuthenticationStrategy(ctx context.Context) fosite.Cli
 
 	// Lazily initialize the Wallet Attestation authenticator on first call.
 	if c.walletAttestationAuthenticator == nil {
+		// JTI replay storage reuses the DPoP JTI table. Per the requirements,
+		// one store serves both DPoP proof JTIs and Wallet Attestation PoP
+		// JTIs (namespaces don't collide — both are random UUIDs). We pull
+		// the Persister directly via deps so we don't depend on the fosite
+		// Storage interface carrying the JTI methods.
 		c.walletAttestationAuthenticator = &wallet_attestation.Authenticator{
-			Config:   c,
-			Store:    c.fositeInstance.Store,
-			JTIStore: c.fositeInstance.Store.(wallet_attestation.JTIStorage),
+			Config:    c,
+			Store:     c.fositeInstance.Store,
+			JTIStore:  c.deps.Persister(),
 			IssuerURL: func(ctx context.Context) string {
 				return c.deps.Config().IssuerURL(ctx).String()
 			},
