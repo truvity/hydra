@@ -215,6 +215,17 @@ func (m *RegistrySQL) Init(
 			m.l, m.Config().DSN(),
 		)
 
+		// When using dsn_file (IAM auth with rotating tokens), enforce a short
+		// ConnMaxLifetime so the pool recycles connections before the IAM token
+		// expires (15 min). pg-creds-aurora refreshes every 14 min; we recycle
+		// at 10 min to ensure connections always use a valid token.
+		if m.Config().DSNFile() != "" {
+			const iamTokenSafeLifetime = 10 * time.Minute
+			if connMaxLifetime == 0 || connMaxLifetime > iamTokenSafeLifetime {
+				connMaxLifetime = iamTokenSafeLifetime
+			}
+		}
+
 		opts := &pop.ConnectionDetails{
 			URL:             sqlcon.FinalizeDSN(m.l, cleanedDSN),
 			IdlePool:        idlePool,

@@ -12,6 +12,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -55,6 +56,7 @@ const (
 	KeySubjectTypesSupported                     = "oidc.subject_identifiers.supported_types"
 	KeyDefaultClientScope                        = "oidc.dynamic_client_registration.default_scope"
 	KeyDSN                                       = "dsn"
+	KeyDSNFile                                   = "dsn_file"
 	KeyClientHTTPNoPrivateIPRanges               = "clients.http.disallow_private_ip_ranges"
 	KeyClientHTTPPrivateIPExceptionURLs          = "clients.http.private_ip_exception_urls"
 	KeyHasherAlgorithm                           = "oauth2.hashers.algorithm"
@@ -322,10 +324,60 @@ func (p *DefaultProvider) DefaultClientScope(ctx context.Context) []string {
 	)
 }
 
+// DSNFile returns the dsn_file config value (empty if not set).
+// When set, DSN() reads the database URL from this file path.
+func (p *DefaultProvider) DSNFile() string {
+	if v := os.Getenv("DSN_FILE"); v != "" {
+		return v
+	}
+	return p.getProvider(contextx.RootContext).String(KeyDSNFile)
+}
+
 func (p *DefaultProvider) DSN() string {
+	// Check DSN_FILE env var first — reads DSN from a file path.
+	// Used with pg-creds-aurora sidecar which writes a fresh PostgreSQL URL
+	// (with IAM auth token) to a file and refreshes it periodically.
+	// We read directly from os.Getenv because configx maps underscores to dots
+	// (DSN_FILE → dsn.file) which doesn't match the config key dsn_file.
+	dsnFile := os.Getenv("DSN_FILE")
+	if dsnFile == "" {
+		// Also check configx (for YAML config file usage)
+		dsnFile = p.getProvider(contextx.RootContext).String(KeyDSNFile)
+	}
+	if dsnFile != "" {
+		p.l.Infof("DSN: reading from file %q (dsn_file mode)", dsnFile)
+
+		// Wait for the file to appear — the pg-creds-aurora sidecar needs a few
+		// seconds to generate the IAM token and write the credential file.
+		var data []byte
+		var err error
+		for attempt := 1; attempt <= 20; attempt++ {
+			data, err = os.ReadFile(dsnFile) // #nosec G304 -- path comes from trusted config
+			if err == nil && len(strings.TrimSpace(string(data))) > 0 {
+				break
+			}
+			if attempt == 20 {
+				if err != nil {
+					p.l.WithError(err).Fatalf("DSN: dsn_file %q not available after 30 attempts", dsnFile)
+				} else {
+					p.l.Fatalf("DSN: dsn_file %q is empty after 30 attempts", dsnFile)
+				}
+				return ""
+			}
+			p.l.Infof("DSN: waiting for dsn_file %q (attempt %d/30)", dsnFile, attempt)
+			time.Sleep(2 * time.Second)
+		}
+
+		dsn := strings.TrimSpace(string(data))
+		p.l.Infof("DSN: successfully read from file %q (len=%d)", dsnFile, len(dsn))
+		return dsn
+	}
+
 	dsn := p.getProvider(contextx.RootContext).String(KeyDSN)
+	p.l.Infof("DSN: resolving from config key (dsn_file not set, KeyDSN=%q)", KeyDSN)
 
 	if dsn == DSNMemory {
+		p.l.Info("DSN: using in-memory SQLite")
 		p.dsnOnce.Do(func() {
 			fn, err := randx.RuneSequence(12, randx.AlphaNum)
 			if err != nil {
@@ -338,6 +390,7 @@ func (p *DefaultProvider) DSN() string {
 	}
 
 	if len(dsn) > 0 {
+		p.l.Infof("DSN: resolved from config (len=%d)", len(dsn))
 		return dsn
 	}
 
