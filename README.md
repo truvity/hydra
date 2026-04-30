@@ -90,6 +90,47 @@ See [`test/oidc4vci-external/README.md`](test/oidc4vci-external/README.md) for
 details on environment variables, cached test data, and the HAIP attester key
 generator.
 
+### Building for ECR (bar ecosystem)
+
+Build the Hydra Docker image and push it to Amazon ECR for deployment in the
+bar ecosystem. Requires devbox shell active and AWS SSO login.
+
+```bash
+# Enter devbox environment (provides barctl, forgectl, goreleaser on PATH)
+devbox shell
+
+# Install GoReleaser Pro (one-time)
+forgectl install
+
+# Build snapshot image and push to ECR
+barctl artifacts snapshot ory
+```
+
+This produces `dist/ory.forge.lock.yaml` — a lock file pinning the exact image
+digest for GitOps deployment.
+
+### Deploying to sandbox (bar repo)
+
+Copy the lock file to the bar repo and run Pulumi:
+
+```bash
+# From the hydra repo root
+cp dist/ory.forge.lock.yaml /path/to/bar/ory/deploy/sandbox/ory.forge.lock.yaml
+
+# Deploy
+cd /path/to/bar/ory/deploy/sandbox
+pulumi up
+```
+
+The deploy program creates:
+- Aurora PostgreSQL database with IAM-authenticated user
+- Migration Job (`hydra migrate sql up`)
+- Hydra Deployment with pg-creds-aurora sidecar (IAM token rotation)
+- ClusterIP Service (ports 4444 public, 4445 admin)
+
+See [`docs/ci/ecr-build.md`](docs/ci/ecr-build.md) for full toolchain setup,
+CI workflow, and troubleshooting.
+
 ---
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
