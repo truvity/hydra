@@ -88,9 +88,10 @@ services:
       - intranet
 
   consent:
-    build:
-      context: ../hydra-login-consent-node
-      dockerfile: Dockerfile
+    image: oryd/hydra-login-consent-node:v26.2.0
+    # build:
+    #  context: ../hydra-login-consent-node
+    #  dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
@@ -100,10 +101,9 @@ services:
       - intranet
 
   mock-issuer:
-    image: oryd/hydra-login-consent-node:v26.2.0
-    # build:
-    #  context: ./test/oidc4vci-external/mock-issuer
-    #  dockerfile: Dockerfile
+    build:
+     context: ./test/oidc4vci-external/mock-issuer
+     dockerfile: Dockerfile
     ports:
       - "4448:4448"
     environment:
@@ -119,9 +119,9 @@ services:
       - MOCK_ISSUER_AUTH_SERVER_ADMIN_URL=http://hydra:4445
       - MOCK_ISSUER_NONCE_TTL=300
     restart: unless-stopped
-    depends_on:
-      hydra:
-        condition: service_started
+    # depends_on:
+    #   hydra:
+    #     condition: service_started
     networks:
       - intranet
 
