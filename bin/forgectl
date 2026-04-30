@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# forgectl wrapper — version resolution, constraint solving, and tool installation
+# This script runs inside devbox environment (devbox.json adds bin/ to PATH)
+
+set -euo pipefail
+
+exec go run github.com/truvity/bar/forgectl/cmd/forgectl@6991c74735a3453180735b13e47cfd9e7cb14b60 "$@"

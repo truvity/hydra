@@ -1,0 +1,54 @@
+name: Push to ECR
+on:
+  push:
+    tags:
+      - "v*-oidc4vci.*"
+  workflow_dispatch:
+    inputs:
+      nightly:
+        description: "Build nightly (snapshot) image"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ecr-push-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  push-ecr:
+    runs-on: ci-stable
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      REGISTRY: ${{ secrets.ECR_REGISTRY_URL }}
+      GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
+      GOPRIVATE: github.com/truvity/*
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ECR_PUSH_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Install GoReleaser Pro
+        run: bin/forgectl install
+
+      - name: Run GoReleaser (release)
+        if: github.event_name == 'push'
+        run: bin/goreleaser release --clean
+
+      - name: Run GoReleaser (nightly)
+        if: github.event_name == 'workflow_dispatch' && inputs.nightly
+        run: bin/goreleaser release --nightly --clean

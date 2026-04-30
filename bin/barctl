@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# barctl wrapper — executes barctl via go run from the private bar repo
+# This script runs inside devbox environment (devbox.json adds bin/ to PATH)
+
+set -euo pipefail
+
+exec go run github.com/truvity/bar/bar/cmd/barctl@6991c74735a3453180735b13e47cfd9e7cb14b60 "$@"

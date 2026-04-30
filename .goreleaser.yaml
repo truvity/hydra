@@ -11,10 +11,19 @@ release:
 
 version: 2
 
+# Output directory — barctl expects artifacts at dist/<project>/ (dist/ory/).
+dist: dist/ory
+
 # Snapshot version used when running `goreleaser release --snapshot`.
 # A stable name keeps local Docker tags predictable (oryd/hydra:local-<arch>).
 snapshot:
   version_template: "local"
+
+# =============================================================================
+# Environment — safe access to optional REGISTRY variable
+# =============================================================================
+env:
+  - REGISTRY={{ if index .Env "REGISTRY" }}{{ .Env.REGISTRY }}{{ else }}{{ end }}
 
 # =============================================================================
 # Builds
@@ -68,6 +77,27 @@ dockers_v2:
     platforms:
       - linux/amd64
       - linux/arm64
+    disable: "{{ if .Env.REGISTRY }}true{{ end }}"
+    labels:
+      org.opencontainers.image.title: hydra
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .Commit }}"
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.description: "Ory Hydra - OAuth 2.0 and OpenID Connect Server"
+
+  - id: ory-hydra
+    ids:
+      - hydra
+    dockerfile: .docker/Dockerfile-goreleaser
+    images:
+      - "{{ .Env.REGISTRY }}/ory/hydra"
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .IsSnapshot }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    disable: "{{ if not .Env.REGISTRY }}true{{ end }}"
     labels:
       org.opencontainers.image.title: hydra
       org.opencontainers.image.version: "{{ .Version }}"

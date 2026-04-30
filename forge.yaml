@@ -1,0 +1,27 @@
+# Dev tool version spec for the Hydra repo.
+# Resolve with: forgectl resolve
+# Install with: forgectl install
+
+components:
+  goreleaser-pro:
+    source: github-release
+    constraint: "~2"
+    description: "GoReleaser Pro build tool"
+    repo: "goreleaser/goreleaser-pro"
+    tag_prefix: "v"
+    asset_patterns:
+      darwin/amd64:
+        contains: "Darwin_x86_64"
+        suffix: ".tar.gz"
+      darwin/arm64:
+        contains: "Darwin_arm64"
+        suffix: ".tar.gz"
+      linux/amd64:
+        contains: "Linux_x86_64"
+        suffix: ".tar.gz"
+      linux/arm64:
+        contains: "Linux_arm64"
+        suffix: ".tar.gz"
+    checksum_asset: "checksums.txt"
+    bin_name: ".goreleaser-pro"
+    extract_name: "goreleaser"
