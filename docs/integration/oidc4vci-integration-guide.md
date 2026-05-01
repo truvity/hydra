@@ -113,7 +113,10 @@ Content-Type: application/json
   "scope": "UniversityDegree_JWT offline",
   "tx_code": "493536",
   "tx_code_input_mode": "numeric",
-  "tx_code_length": 6
+  "tx_code_length": 6,
+  "session_extra": {
+    "offer_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
 }
 ```
 
@@ -129,6 +132,7 @@ Response:
 - `client_id` is optional. If omitted, any client (or anonymous if configured) can redeem the code.
 - `tx_code` is sent in plaintext. Hydra hashes it with SHA-256 before storage — the plaintext is never persisted.
 - `credential_configuration_ids` defines the authorization envelope — what credentials the Wallet is allowed to request.
+- `session_extra` is optional. Key-value pairs provided here are embedded in the token session and returned via introspection in the `ext` field. Use this to pass correlation identifiers (e.g., `offer_id`) from the Credential Issuer to the access token session.
 
 **Step 3 — Credential Issuer constructs and sends the Credential Offer:**
 
@@ -202,6 +206,7 @@ Response:
   "active": true,
   "token_type": "DPoP",
   "ext": {
+    "offer_id": "550e8400-e29b-41d4-a716-446655440000",
     "authorization_details": [
       {
         "type": "openid_credential",

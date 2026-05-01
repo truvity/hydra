@@ -151,11 +151,13 @@ type mockConfig struct {
 	rtScopes        []string
 }
 
-func (c *mockConfig) GetPreAuthorizedCodeEnabled(_ context.Context) bool              { return c.enabled }
-func (c *mockConfig) GetPreAuthorizedCodeLifespan(_ context.Context) time.Duration    { return c.lifespan }
-func (c *mockConfig) GetPreAuthorizedCodeAnonymousAccess(_ context.Context) bool      { return c.anonymousAccess }
-func (c *mockConfig) GetAccessTokenLifespan(_ context.Context) time.Duration          { return c.atLifespan }
-func (c *mockConfig) GetRefreshTokenScopes(_ context.Context) []string                { return c.rtScopes }
+func (c *mockConfig) GetPreAuthorizedCodeEnabled(_ context.Context) bool           { return c.enabled }
+func (c *mockConfig) GetPreAuthorizedCodeLifespan(_ context.Context) time.Duration { return c.lifespan }
+func (c *mockConfig) GetPreAuthorizedCodeAnonymousAccess(_ context.Context) bool {
+	return c.anonymousAccess
+}
+func (c *mockConfig) GetAccessTokenLifespan(_ context.Context) time.Duration { return c.atLifespan }
+func (c *mockConfig) GetRefreshTokenScopes(_ context.Context) []string       { return c.rtScopes }
 
 // --- helpers ---
 
@@ -234,7 +236,6 @@ func genCredentialConfigIDSet() *rapid.Generator[[]string] {
 		return ids
 	})
 }
-
 
 // =============================================================================
 // Feature: oidc4vci-preauth, Property 1: Pre-Authorized Code Valid Redemption
@@ -345,10 +346,10 @@ func TestProperty2_TxCodeValidation(t *testing.T) {
 		// Feature: oidc4vci-preauth, Property 2: Pre-Authorized Code tx_code Validation
 		rapid.Check(t, func(t *rapid.T) {
 			const (
-				scenarioRequiredAndMatching    = 0
-				scenarioRequiredAndMismatching = 1
-				scenarioRequiredButMissing     = 2
-				scenarioNotRequiredButProvided  = 3
+				scenarioRequiredAndMatching        = 0
+				scenarioRequiredAndMismatching     = 1
+				scenarioRequiredButMissing         = 2
+				scenarioNotRequiredButProvided     = 3
 				scenarioNeitherRequiredNorProvided = 4
 			)
 
@@ -1233,6 +1234,78 @@ func TestProperty8_StorageRoundTrip(t *testing.T) {
 			// Second invalidation should fail (already redeemed).
 			err = store.InvalidatePreAuthorizedCode(ctx, signature)
 			require.Error(t, err, "second invalidation should fail because code is already redeemed")
+		})
+	})
+}
+
+// =============================================================================
+// Feature: oidc4vci-preauth, Property 9: Session Extra Claims Propagation
+// =============================================================================
+
+// TestProperty9_SessionExtraPropagation verifies that extra claims embedded in
+// SessionData during pre-authorized code creation (via session_extra in the admin
+// API request) are available in the session after token exchange. This enables the
+// Credential Issuer to pass correlation identifiers (e.g., offer_id) through the
+// token lifecycle and retrieve them via introspection.
+//
+// **Validates: Requirement 9.5 (offer_id in pre-authorized code extra claims)**
+func TestProperty9_SessionExtraPropagation(t *testing.T) {
+	t.Parallel()
+
+	t.Run("case=property 9 session extra claims propagation", func(t *testing.T) {
+		t.Parallel()
+
+		// Feature: oidc4vci-preauth, Property 9: Session Extra Claims Propagation
+		rapid.Check(t, func(t *rapid.T) {
+			store := newMockStorage()
+			cfg := defaultConfig()
+			handler := newHandler(store, cfg)
+
+			clientID := rapid.StringMatching(`client-[a-z0-9]{4,8}`).Draw(t, "clientID")
+			signature := rapid.StringMatching(`sig-[a-z0-9]{8,16}`).Draw(t, "signature")
+			rawCode := "key." + signature
+			offerID := rapid.StringMatching(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`).Draw(t, "offerID")
+
+			// Create session with extra claims (simulates session_extra from admin API).
+			sess := newTestSession()
+			sess.Extra["offer_id"] = offerID
+
+			data := &preauth.PreAuthorizedCodeData{
+				Signature:                  signature,
+				ClientID:                   clientID,
+				CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"TestCredential"},
+				GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
+				SessionData:                marshalSession(t, sess),
+				Redeemed:                   false,
+				ExpiresAt:                  time.Now().Add(30 * time.Minute),
+				RequestedAt:                time.Now(),
+			}
+
+			err := store.CreatePreAuthorizedCodeSession(t.Context(), signature, data)
+			require.NoError(t, err)
+
+			client := &fosite.DefaultClient{
+				ID:         clientID,
+				GrantTypes: []string{"urn:ietf:params:oauth:grant-type:pre-authorized_code"},
+			}
+			ar := newAccessRequest(&fosite.DefaultSession{Extra: map[string]interface{}{}}, client)
+			ar.Form.Set("pre-authorized_code", rawCode)
+
+			err = handler.HandleTokenEndpointRequest(t.Context(), ar)
+			require.NoError(t, err, "HandleTokenEndpointRequest should succeed")
+
+			// Verify offer_id is present in session extra claims.
+			session, ok := ar.GetSession().(fosite.ExtraClaimsSession)
+			require.True(t, ok, "session should implement ExtraClaimsSession")
+
+			extras := session.GetExtraClaims()
+			gotOfferID, exists := extras["offer_id"]
+			require.True(t, exists, "session extra should contain offer_id")
+			assert.Equal(t, offerID, gotOfferID, "offer_id should match the value set during code creation")
+
+			// authorization_details should also be present (default set).
+			_, adExists := extras["authorization_details"]
+			assert.True(t, adExists, "session extra should contain authorization_details")
 		})
 	})
 }
