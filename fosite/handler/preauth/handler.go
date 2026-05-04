@@ -36,8 +36,8 @@ type PreAuthorizedCodeConfigProvider = fosite.PreAuthorizedCodeConfigProvider
 // Handler implements fosite.TokenEndpointHandler for the Pre-Authorized Code
 // grant type (urn:ietf:params:oauth:grant-type:pre-authorized_code).
 type Handler struct {
-	Config   PreAuthorizedCodeConfigProvider
-	Storage  interface {
+	Config  PreAuthorizedCodeConfigProvider
+	Storage interface {
 		PreAuthorizedCodeStorageProvider
 		oauth2.AccessTokenStorageProvider
 	}
@@ -134,6 +134,16 @@ func (h *Handler) HandleTokenEndpointRequest(ctx context.Context, requester fosi
 		session.Extra = make(map[string]interface{})
 	}
 	session.Extra["authorization_details"] = authDetails
+
+	// Preserve DPoP confirmation claim (cnf.jkt) set by the DPoP handler
+	// in its HandleTokenEndpointRequest. The DPoP handler runs before preauth
+	// and writes cnf into the requester's session extra. We must carry it over
+	// into the deserialized session to avoid losing the DPoP binding.
+	if existingSession, ok := requester.GetSession().(fosite.ExtraClaimsSession); ok {
+		if cnf, exists := existingSession.GetExtraClaims()["cnf"]; exists {
+			session.Extra["cnf"] = cnf
+		}
+	}
 
 	for _, scope := range data.GrantedScope {
 		requester.GrantScope(scope)
