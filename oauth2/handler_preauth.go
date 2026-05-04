@@ -38,20 +38,20 @@ type preauthSessionCreator interface {
 // preauthCodeData mirrors preauth.PreAuthorizedCodeData with the same Pop
 // struct tags and table name. Defined locally to break the import cycle.
 type preauthCodeData struct {
-	ID                         string                     `db:"signature" json:"signature"`
-	NID                        uuid.UUID                  `db:"nid"`
-	RequestID                  string                     `db:"request_id"`
-	ClientID                   string                     `db:"client_id"`
+	ID                         string                      `db:"signature" json:"signature"`
+	NID                        uuid.UUID                   `db:"nid"`
+	RequestID                  string                      `db:"request_id"`
+	ClientID                   string                      `db:"client_id"`
 	RequestedScope             sqlxx.StringSliceJSONFormat `db:"requested_scope"`
 	GrantedScope               sqlxx.StringSliceJSONFormat `db:"granted_scope"`
 	CredentialConfigurationIDs sqlxx.StringSliceJSONFormat `db:"credential_configuration_ids"`
-	TxCodeHash                 string                     `db:"tx_code_hash"`
-	TxCodeInputMode            string                     `db:"tx_code_input_mode"`
-	TxCodeLength               int                        `db:"tx_code_length"`
-	SessionData                json.RawMessage            `db:"session_data"`
-	Redeemed                   bool                       `db:"redeemed"`
-	RequestedAt                time.Time                  `db:"requested_at"`
-	ExpiresAt                  time.Time                  `db:"expires_at"`
+	TxCodeHash                 string                      `db:"tx_code_hash"`
+	TxCodeInputMode            string                      `db:"tx_code_input_mode"`
+	TxCodeLength               int                         `db:"tx_code_length"`
+	SessionData                json.RawMessage             `db:"session_data"`
+	Redeemed                   bool                        `db:"redeemed"`
+	RequestedAt                time.Time                   `db:"requested_at"`
+	ExpiresAt                  time.Time                   `db:"expires_at"`
 }
 
 func (d *preauthCodeData) TableName() string {
@@ -107,6 +107,15 @@ type createPreAuthorizedCodeBody struct {
 	//
 	// example: 6
 	TxCodeLength int `json:"tx_code_length,omitempty"`
+
+	// Extra claims to embed in the pre-authorized code session.
+	// These claims will be available via token introspection in the `ext` field
+	// after the code is exchanged for an access token.
+	// Use this to pass correlation identifiers (e.g., offer_id) from the
+	// Credential Issuer to the token session.
+	//
+	// example: {"offer_id": "550e8400-e29b-41d4-a716-446655440000"}
+	SessionExtra map[string]interface{} `json:"session_extra,omitempty"`
 }
 
 // Pre-Authorized Code Response
@@ -209,8 +218,16 @@ func (h *Handler) createPreAuthorizedCode(w http.ResponseWriter, r *http.Request
 		grantedScope = scopes
 	}
 
-	// Build session data — minimal empty session.
-	sessionData, _ := json.Marshal(&Session{})
+	// Build session data with extra claims (e.g., offer_id for Credential Issuer correlation).
+	session := &Session{}
+	if len(body.SessionExtra) > 0 {
+		session.Extra = body.SessionExtra
+	}
+	sessionData, err := json.Marshal(session)
+	if err != nil {
+		h.r.Writer().WriteError(w, r, errorsx.WithStack(fosite.ErrServerError.WithWrap(err).WithDebugf("failed to marshal session data: %s", err.Error())))
+		return
+	}
 
 	// Build pre-authorized code data for persistence.
 	// Uses preauthCodeData (local mirror of preauth.PreAuthorizedCodeData)
