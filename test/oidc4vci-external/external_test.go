@@ -665,3 +665,143 @@ func buildDPoPProofWithNonce(t *testing.T, key *ecdsa.PrivateKey, htm, htu, nonc
 	require.NoError(t, err)
 	return raw
 }
+
+// ── Pre-Authorized Code with session_extra Test ───────────────────────────────
+
+// TestExternal_PreAuthCode_SessionExtra verifies that extra claims passed via
+// session_extra in the admin API request are embedded in the pre-authorized
+// code session and propagated to the access token. After token exchange, the
+// claims must appear in the introspection response under the `ext` field.
+//
+// This validates the feature added in BAC-343: Credential Issuers can pass
+// correlation identifiers (e.g., offer_id) through the token lifecycle.
+func TestExternal_PreAuthCode_SessionExtra(t *testing.T) {
+	skipIfHydraDown(t)
+
+	clientID, clientSecret := createClient(t, "http://localhost:9999/callback",
+		[]string{"urn:ietf:params:oauth:grant-type:pre-authorized_code"})
+
+	offerID := uuid.New()
+	correlationTag := "session-extra-test-" + uuid.New()
+
+	// Create a pre-authorized code with session_extra containing offer_id
+	// and an arbitrary correlation tag.
+	codeResp := adminPost(t, "/admin/oauth2/preauth", map[string]interface{}{
+		"client_id":                    clientID,
+		"credential_configuration_ids": []string{"TestCredential_JWT"},
+		"session_extra": map[string]interface{}{
+			"offer_id":        offerID,
+			"correlation_tag": correlationTag,
+		},
+	})
+	code, ok := codeResp["pre_authorized_code"].(string)
+	require.True(t, ok, "pre_authorized_code missing: %v", codeResp)
+	require.NotEmpty(t, code)
+	t.Logf("Pre-authorized code (with session_extra): %s...", code[:20])
+
+	// Exchange the code at the token endpoint.
+	form := url.Values{
+		"grant_type":          {"urn:ietf:params:oauth:grant-type:pre-authorized_code"},
+		"pre-authorized_code": {code},
+		"client_id":           {clientID},
+	}
+	req, _ := http.NewRequest(http.MethodPost, publicURL()+"/oauth2/token",
+		strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(clientID, clientSecret)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+
+	var tokenResp map[string]interface{}
+	require.NoError(t, json.Unmarshal(raw, &tokenResp))
+	require.NotContains(t, tokenResp, "error",
+		"token exchange should succeed: %s", string(raw))
+
+	accessToken, ok := tokenResp["access_token"].(string)
+	require.True(t, ok, "access_token missing from response")
+	require.NotEmpty(t, accessToken)
+	t.Logf("Access token: %s...", accessToken[:20])
+
+	// Introspect the token and verify session_extra claims appear in ext.
+	intro := introspect(t, accessToken)
+	assert.Equal(t, true, intro["active"])
+
+	ext, ok := intro["ext"].(map[string]interface{})
+	require.True(t, ok, "ext missing from introspection response: %v", intro)
+
+	// Verify offer_id is present and matches.
+	gotOfferID, ok := ext["offer_id"]
+	require.True(t, ok, "offer_id missing from ext: %v", ext)
+	assert.Equal(t, offerID, gotOfferID, "offer_id should match the value set in session_extra")
+	t.Logf("  ext.offer_id: %v", gotOfferID)
+
+	// Verify correlation_tag is present and matches.
+	gotTag, ok := ext["correlation_tag"]
+	require.True(t, ok, "correlation_tag missing from ext: %v", ext)
+	assert.Equal(t, correlationTag, gotTag, "correlation_tag should match the value set in session_extra")
+	t.Logf("  ext.correlation_tag: %v", gotTag)
+
+	// authorization_details should also be present (set by the preauth handler).
+	_, adExists := ext["authorization_details"]
+	assert.True(t, adExists, "authorization_details should be present in ext")
+
+	t.Log("session_extra claims propagated successfully through token exchange.")
+}
+
+// TestExternal_PreAuthCode_SessionExtraEmpty verifies that omitting session_extra
+// (or passing an empty map) does not break the existing flow — the token exchange
+// still succeeds and introspection returns a valid ext without the extra fields.
+func TestExternal_PreAuthCode_SessionExtraEmpty(t *testing.T) {
+	skipIfHydraDown(t)
+
+	clientID, clientSecret := createClient(t, "http://localhost:9999/callback",
+		[]string{"urn:ietf:params:oauth:grant-type:pre-authorized_code"})
+
+	// Create a pre-authorized code WITHOUT session_extra.
+	codeResp := adminPost(t, "/admin/oauth2/preauth", map[string]interface{}{
+		"client_id":                    clientID,
+		"credential_configuration_ids": []string{"TestCredential_JWT"},
+	})
+	code, ok := codeResp["pre_authorized_code"].(string)
+	require.True(t, ok, "pre_authorized_code missing: %v", codeResp)
+
+	// Exchange the code.
+	form := url.Values{
+		"grant_type":          {"urn:ietf:params:oauth:grant-type:pre-authorized_code"},
+		"pre-authorized_code": {code},
+		"client_id":           {clientID},
+	}
+	req, _ := http.NewRequest(http.MethodPost, publicURL()+"/oauth2/token",
+		strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(clientID, clientSecret)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+
+	var tokenResp map[string]interface{}
+	require.NoError(t, json.Unmarshal(raw, &tokenResp))
+	require.NotContains(t, tokenResp, "error",
+		"token exchange should succeed without session_extra: %s", string(raw))
+
+	accessToken, ok := tokenResp["access_token"].(string)
+	require.True(t, ok)
+	require.NotEmpty(t, accessToken)
+
+	// Introspect — ext should exist (authorization_details) but no offer_id.
+	intro := introspect(t, accessToken)
+	assert.Equal(t, true, intro["active"])
+
+	ext, ok := intro["ext"].(map[string]interface{})
+	if ok {
+		_, hasOfferID := ext["offer_id"]
+		assert.False(t, hasOfferID, "offer_id should NOT be present when session_extra is omitted")
+	}
+
+	t.Log("Empty session_extra: token exchange succeeded without extra claims in ext.")
+}
