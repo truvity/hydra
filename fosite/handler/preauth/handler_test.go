@@ -1309,3 +1309,151 @@ func TestProperty9_SessionExtraPropagation(t *testing.T) {
 		})
 	})
 }
+
+// =============================================================================
+// SEC-346: Anonymous Client Assignment on Token Issuance
+// =============================================================================
+
+// TestAnonymousClientAssignment verifies that when anonymous access is enabled
+// and no client was authenticated, PopulateTokenEndpointResponse assigns the
+// synthetic AnonymousClientID to the requester so that CreateAccessTokenSession
+// can persist the token without FK violation.
+func TestAnonymousClientAssignment(t *testing.T) {
+	t.Parallel()
+
+	t.Run("case=anonymous client assigned when client ID is empty", func(t *testing.T) {
+		t.Parallel()
+
+		store := newMockStorage()
+		cfg := defaultConfig()
+		cfg.anonymousAccess = true
+		handler := newHandler(store, cfg)
+
+		signature := "sig-anon-test"
+		rawCode := "key." + signature
+
+		sess := newTestSession()
+		data := &preauth.PreAuthorizedCodeData{
+			Signature:                  signature,
+			ClientID:                   "", // unbound
+			CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
+			GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
+			SessionData:                marshalSession(t, sess),
+			Redeemed:                   false,
+			ExpiresAt:                  time.Now().Add(30 * time.Minute),
+			RequestedAt:                time.Now(),
+		}
+
+		err := store.CreatePreAuthorizedCodeSession(context.Background(), signature, data)
+		require.NoError(t, err)
+
+		// Simulate anonymous access: client with empty ID (as Fosite sets it).
+		client := &fosite.DefaultClient{ID: ""}
+		ar := newAccessRequest(&fosite.DefaultSession{Extra: map[string]interface{}{}}, client)
+		ar.Form.Set("pre-authorized_code", rawCode)
+
+		err = handler.HandleTokenEndpointRequest(context.Background(), ar)
+		require.NoError(t, err)
+
+		resp := fosite.NewAccessResponse()
+		err = handler.PopulateTokenEndpointResponse(context.Background(), ar, resp)
+		require.NoError(t, err)
+
+		// Verify the anonymous client was assigned.
+		assert.Equal(t, preauth.AnonymousClientID, ar.GetClient().GetID(),
+			"anonymous client ID should be assigned to the requester")
+		assert.NotEmpty(t, resp.GetAccessToken(), "access token should be issued")
+		assert.Nil(t, resp.GetExtra("refresh_token"), "anonymous client should NOT get refresh token")
+	})
+
+	t.Run("case=authenticated client is NOT overwritten", func(t *testing.T) {
+		t.Parallel()
+
+		store := newMockStorage()
+		cfg := defaultConfig()
+		cfg.anonymousAccess = true // even with anonymous access enabled
+		handler := newHandler(store, cfg)
+
+		clientID := "real-client-123"
+		signature := "sig-auth-test"
+		rawCode := "key." + signature
+
+		sess := newTestSession()
+		data := &preauth.PreAuthorizedCodeData{
+			Signature:                  signature,
+			ClientID:                   clientID,
+			CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
+			GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
+			SessionData:                marshalSession(t, sess),
+			Redeemed:                   false,
+			ExpiresAt:                  time.Now().Add(30 * time.Minute),
+			RequestedAt:                time.Now(),
+		}
+
+		err := store.CreatePreAuthorizedCodeSession(context.Background(), signature, data)
+		require.NoError(t, err)
+
+		// Authenticated client with a real ID.
+		client := &fosite.DefaultClient{ID: clientID}
+		ar := newAccessRequest(&fosite.DefaultSession{Extra: map[string]interface{}{}}, client)
+		ar.Form.Set("pre-authorized_code", rawCode)
+
+		err = handler.HandleTokenEndpointRequest(context.Background(), ar)
+		require.NoError(t, err)
+
+		resp := fosite.NewAccessResponse()
+		err = handler.PopulateTokenEndpointResponse(context.Background(), ar, resp)
+		require.NoError(t, err)
+
+		// Verify the real client is preserved.
+		assert.Equal(t, clientID, ar.GetClient().GetID(),
+			"authenticated client should NOT be overwritten")
+		assert.NotEmpty(t, resp.GetAccessToken(), "access token should be issued")
+	})
+
+	t.Run("case=nil client gets anonymous client assigned", func(t *testing.T) {
+		t.Parallel()
+
+		store := newMockStorage()
+		cfg := defaultConfig()
+		cfg.anonymousAccess = true
+		handler := newHandler(store, cfg)
+
+		signature := "sig-nil-test"
+		rawCode := "key." + signature
+
+		sess := newTestSession()
+		data := &preauth.PreAuthorizedCodeData{
+			Signature:                  signature,
+			ClientID:                   "", // unbound
+			CredentialConfigurationIDs: sqlxx.StringSliceJSONFormat{"CredA"},
+			GrantedScope:               sqlxx.StringSliceJSONFormat{"openid"},
+			SessionData:                marshalSession(t, sess),
+			Redeemed:                   false,
+			ExpiresAt:                  time.Now().Add(30 * time.Minute),
+			RequestedAt:                time.Now(),
+		}
+
+		err := store.CreatePreAuthorizedCodeSession(context.Background(), signature, data)
+		require.NoError(t, err)
+
+		// Simulate nil client scenario.
+		ar := newAccessRequest(&fosite.DefaultSession{Extra: map[string]interface{}{}}, nil)
+		// newAccessRequest sets Client to &DefaultClient{} when nil is passed,
+		// but let's explicitly set it to nil to test the nil path.
+		ar.Client = nil
+		ar.Form.Set("pre-authorized_code", rawCode)
+
+		err = handler.HandleTokenEndpointRequest(context.Background(), ar)
+		require.NoError(t, err)
+
+		resp := fosite.NewAccessResponse()
+		err = handler.PopulateTokenEndpointResponse(context.Background(), ar, resp)
+		require.NoError(t, err)
+
+		// Verify the anonymous client was assigned.
+		assert.Equal(t, preauth.AnonymousClientID, ar.GetClient().GetID(),
+			"anonymous client ID should be assigned when client is nil")
+		assert.NotEmpty(t, resp.GetAccessToken(), "access token should be issued")
+	})
+}

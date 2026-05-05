@@ -136,7 +136,7 @@ rfc9207:
 preauth:
   enabled: true
   lifespan: 30m
-  anonymous_access: false
+  anonymous_access: true
 
 # Wallet Attestation (OAuth 2.0 Attestation-Based Client Authentication)
 wallet_attestation:

@@ -256,6 +256,17 @@ func (h *Handler) PopulateTokenEndpointResponse(ctx context.Context, requester f
 		return errorsx.WithStack(fosite.ErrUnknownRequest)
 	}
 
+	// SEC-346: When anonymous access is enabled and no client was authenticated,
+	// assign the synthetic anonymous client so that CreateAccessTokenSession can
+	// persist the token (hydra_oauth2_access.client_id has a NOT NULL FK to
+	// hydra_client). The anonymous client row is provisioned via DB migration.
+	if requester.GetClient() == nil || requester.GetClient().GetID() == "" {
+		requester.(*fosite.AccessRequest).Client = &fosite.DefaultClient{
+			ID:     AnonymousClientID,
+			Public: true,
+		}
+	}
+
 	// Determine access token lifespan. Type-assert Config to AccessTokenLifespanProvider
 	// since PreAuthorizedCodeConfigProvider does not include GetAccessTokenLifespan.
 	var atLifespan time.Duration
@@ -298,7 +309,7 @@ func (h *Handler) PopulateTokenEndpointResponse(ctx context.Context, requester f
 
 	// Refresh token eligibility check (Req 4.6, 4.7).
 	// Anonymous (no bound client) → never issue refresh token.
-	if requester.GetClient() == nil || requester.GetClient().GetID() == "" {
+	if requester.GetClient() == nil || requester.GetClient().GetID() == "" || requester.GetClient().GetID() == AnonymousClientID {
 		return nil
 	}
 
