@@ -2,8 +2,13 @@
 -- When preauth.anonymous_access is enabled, the token endpoint stores access tokens
 -- with this client_id to satisfy the hydra_oauth2_access FK constraint.
 --
--- The client is inserted for every existing network. The ON CONFLICT clause ensures
--- idempotency (re-running the migration does not fail or create duplicates).
+-- The client is inserted for every existing network. The WHERE NOT EXISTS clause
+-- ensures idempotency (re-running the migration does not fail or create duplicates).
+--
+-- Note: jsonb columns (redirect_uris, grant_types, response_types, audience,
+-- allowed_cors_origins, contacts, request_uris, post_logout_redirect_uris) require
+-- valid JSON literals. Plain '[]' is valid JSON and accepted by both PostgreSQL
+-- jsonb and SQLite/MySQL text columns.
 
 INSERT INTO hydra_client (
     id,
@@ -59,7 +64,7 @@ SELECT
     '[]',
     0,
     '',
-    '{}',
+    '{"keys":[]}',
     '',
     '[]',
     'none',
@@ -70,10 +75,10 @@ SELECT
     '[]',
     '',
     false,
-    '',
+    '[]',
     '',
     false,
-    '{"synthetic":true,"purpose":"oidc4vci_anonymous_access"}',
+    '{}',
     '',
     '',
     '',
