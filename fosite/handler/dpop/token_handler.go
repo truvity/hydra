@@ -30,10 +30,24 @@ func (h *Handler) CanHandleTokenEndpointRequest(_ context.Context, requester fos
 	return form.Get("dpop_proof") != "" || form.Get("dpop_proof_error") != ""
 }
 
-// CanSkipClientAuth always returns false — DPoP is a token binding mechanism,
-// not a client authentication method.
-func (h *Handler) CanSkipClientAuth(_ context.Context, _ fosite.AccessRequester) bool {
+// CanSkipClientAuth returns true when the grant type is pre-authorized_code and
+// anonymous access is enabled. DPoP is a token binding mechanism, not a client
+// authentication method — it should not block grant-type-specific auth decisions.
+func (h *Handler) CanSkipClientAuth(ctx context.Context, requester fosite.AccessRequester) bool {
+	if requester.GetGrantTypes().ExactOne("urn:ietf:params:oauth:grant-type:pre-authorized_code") {
+		if p, ok := h.Config.(preAuthAnonymousAccessProvider); ok {
+			return p.GetPreAuthorizedCodeAnonymousAccess(ctx)
+		}
+	}
 	return false
+}
+
+// preAuthAnonymousAccessProvider is a local interface for accessing the
+// pre-authorized code anonymous access setting via type assertion. The
+// handler's Config field is DPoPConfigProvider, but at runtime the concrete
+// value is the full Configurator which also implements this method.
+type preAuthAnonymousAccessProvider interface {
+	GetPreAuthorizedCodeAnonymousAccess(ctx context.Context) bool
 }
 
 // HandleTokenEndpointRequest validates the DPoP proof JWT per RFC 9449 §4.3,
