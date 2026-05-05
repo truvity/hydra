@@ -24,15 +24,37 @@ func (h *RARHandler) CanHandleTokenEndpointRequest(_ context.Context, requester 
 	return requester.GetRequestForm().Get("authorization_details") != ""
 }
 
-// CanSkipClientAuth always returns false — RAR never bypasses client authentication.
-func (h *RARHandler) CanSkipClientAuth(_ context.Context, _ fosite.AccessRequester) bool {
-	return false
+// CanSkipClientAuth returns true when the grant type is the pre-authorized
+// code flow. RAR runs at the token endpoint as a cross-cutting handler that
+// validates authorization_details against the session — it should not enforce
+// client authentication on its own. The grant-specific handler (preauth) is
+// responsible for the client auth decision based on its own configuration
+// (e.g., preauth.anonymous_access). For all other grant types, RAR returns
+// false because they always require client authentication anyway.
+//
+// SEC-346: Without this, an anonymous pre-auth request that includes
+// authorization_details would be rejected by RAR before the preauth handler
+// could run, even though the preauth handler is configured to allow anonymous
+// access.
+func (h *RARHandler) CanSkipClientAuth(_ context.Context, requester fosite.AccessRequester) bool {
+	return requester.GetGrantTypes().ExactOne("urn:ietf:params:oauth:grant-type:pre-authorized_code")
 }
 
 // HandleTokenEndpointRequest validates that the credential_configuration_id values
 // in the token request's authorization_details are a subset of the previously
 // authorized set stored in session.Extra["authorization_details"].
+//
+// SEC-346: For the pre-authorized code grant, this validation is delegated to
+// the preauth handler (which checks against the stored CredentialConfigurationIDs
+// — the equivalent of the authorized set, established at code creation time).
+// At this point in the pipeline the preauth handler has not yet run, so the
+// session is still empty; validating here would always reject. Skip cleanly
+// and let the preauth handler perform the subset check.
 func (h *RARHandler) HandleTokenEndpointRequest(ctx context.Context, requester fosite.AccessRequester) error {
+	if requester.GetGrantTypes().ExactOne("urn:ietf:params:oauth:grant-type:pre-authorized_code") {
+		return nil
+	}
+
 	rawJSON := requester.GetRequestForm().Get("authorization_details")
 	if rawJSON == "" {
 		return nil
