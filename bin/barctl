@@ -4,4 +4,4 @@
 
 set -euo pipefail
 
-exec go run github.com/truvity/bar/bar/cmd/barctl@6991c74735a3453180735b13e47cfd9e7cb14b60 "$@"
+exec go run github.com/truvity/bar/bar/cmd/barctl@28f14844d7e90680558722c8edaefecfdcebe945 "$@"
