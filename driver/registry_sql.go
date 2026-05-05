@@ -236,6 +236,18 @@ func (m *RegistrySQL) Init(
 			Unsafe:          m.Config().DbIgnoreUnknownTableColumns(),
 		}
 
+		// When using dsn_file, route database/sql through a custom pgx driver
+		// that re-reads the DSN on every new physical connection. Combined with
+		// the ConnMaxLifetime cap above, this ensures the connection pool picks
+		// up rotated IAM tokens written by the pg-creds-aurora sidecar.
+		if dsnFile := m.Config().DSNFile(); dsnFile != "" {
+			driverName, err := registerRotatingPgxDriver(dsnFile)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			opts.Driver = driverName
+		}
+
 		for _, f := range m.dbOptsModifier {
 			f(opts)
 		}
