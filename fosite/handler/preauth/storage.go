@@ -43,13 +43,13 @@ type PreAuthorizedCodeData struct {
 	NID                        uuid.UUID                   `db:"nid"`
 	RequestID                  string                      `db:"request_id"`
 	ClientID                   string                      `db:"client_id"`
-	RequestedScope             sqlxx.StringSliceJSONFormat  `db:"requested_scope"`
-	GrantedScope               sqlxx.StringSliceJSONFormat  `db:"granted_scope"`
-	CredentialConfigurationIDs sqlxx.StringSliceJSONFormat  `db:"credential_configuration_ids"`
+	RequestedScope             sqlxx.StringSliceJSONFormat `db:"requested_scope"`
+	GrantedScope               sqlxx.StringSliceJSONFormat `db:"granted_scope"`
+	CredentialConfigurationIDs sqlxx.StringSliceJSONFormat `db:"credential_configuration_ids"`
 	TxCodeHash                 string                      `db:"tx_code_hash"`
 	TxCodeInputMode            string                      `db:"tx_code_input_mode"`
 	TxCodeLength               int                         `db:"tx_code_length"`
-	SessionData                json.RawMessage              `db:"session_data"`
+	SessionData                json.RawMessage             `db:"session_data"`
 	Redeemed                   bool                        `db:"redeemed"`
 	RequestedAt                time.Time                   `db:"requested_at"`
 	ExpiresAt                  time.Time                   `db:"expires_at"`

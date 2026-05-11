@@ -219,6 +219,11 @@ func (h *Handler) resolveAuthorizationDetails(data *PreAuthorizedCodeData, reque
 						WithHint("requested credential_configuration_id not authorized").
 						WithDebugf("credential_configuration_id %q not in allowed set", id))
 				}
+
+				// Ensure credential_identifiers is present per OID4VCI 1.0 Section 6.2.
+				if _, hasIDs := obj["credential_identifiers"]; !hasIDs {
+					obj["credential_identifiers"] = []interface{}{id}
+				}
 			}
 		}
 
@@ -232,6 +237,7 @@ func (h *Handler) resolveAuthorizationDetails(data *PreAuthorizedCodeData, reque
 		defaultDetails = append(defaultDetails, map[string]interface{}{
 			"type":                        "openid_credential",
 			"credential_configuration_id": id,
+			"credential_identifiers":      []interface{}{id},
 		})
 	}
 
