@@ -302,7 +302,18 @@ func (h *Handler) PopulateTokenEndpointResponse(ctx context.Context, requester f
 	}
 
 	responder.SetAccessToken(access)
-	responder.SetTokenType("bearer")
+
+	// Set token_type based on whether DPoP was used.
+	// If the DPoP handler set a cnf claim (jkt thumbprint) in the session,
+	// the token is DPoP-bound and token_type must be "DPoP" per RFC 9449.
+	tokenType := "bearer"
+	if session, ok := requester.GetSession().(fosite.ExtraClaimsSession); ok {
+		if _, hasCnf := session.GetExtraClaims()["cnf"]; hasCnf {
+			tokenType = "DPoP"
+		}
+	}
+	responder.SetTokenType(tokenType)
+
 	responder.SetExpiresIn(getExpiresIn(requester, fosite.AccessToken, atLifespan, time.Now().UTC()))
 	responder.SetScopes(requester.GetGrantedScopes())
 
