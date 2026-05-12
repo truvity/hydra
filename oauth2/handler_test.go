@@ -358,7 +358,7 @@ func TestHandlerWellKnown(t *testing.T) {
 		require.NoError(t, err)
 		defer res.Body.Close() //nolint:errcheck
 
-		var wellKnownResp hydra.OidcConfiguration
+		var wellKnownResp map[string]interface{}
 		err = json.NewDecoder(res.Body).Decode(&wellKnownResp)
 		require.NoError(t, err, "problem decoding wellknown json response: %+v", err)
 
@@ -367,9 +367,7 @@ func TestHandlerWellKnown(t *testing.T) {
 			// The signing algorithm is not stable in the HSM tests, because the key is kept
 			// in the HSM and persists across test runs.
 			snapshotOpts = append(snapshotOpts, snapshotx.ExceptPaths(
-				"id_token_signed_response_alg",
 				"id_token_signing_alg_values_supported",
-				"userinfo_signed_response_alg",
 				"userinfo_signing_alg_values_supported",
 			))
 		}
@@ -403,7 +401,7 @@ func TestHandlerOauthAuthorizationServer(t *testing.T) {
 		require.NoError(t, err)
 		defer res.Body.Close() //nolint:errcheck
 
-		var wellKnownResp hydra.OidcConfiguration
+		var wellKnownResp map[string]interface{}
 		err = json.NewDecoder(res.Body).Decode(&wellKnownResp)
 		require.NoError(t, err, "problem decoding wellknown json response: %+v", err)
 		snapshotOpts := []snapshotx.Opt{}
@@ -411,9 +409,7 @@ func TestHandlerOauthAuthorizationServer(t *testing.T) {
 			// The signing algorithm is not stable in the HSM tests, because the key is kept
 			// in the HSM and persists across test runs.
 			snapshotOpts = append(snapshotOpts, snapshotx.ExceptPaths(
-				"id_token_signed_response_alg",
 				"id_token_signing_alg_values_supported",
-				"userinfo_signed_response_alg",
 				"userinfo_signing_alg_values_supported",
 			))
 		}

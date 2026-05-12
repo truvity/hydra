@@ -376,20 +376,6 @@ type oidcConfiguration struct {
 	// required: true
 	IDTokenSigningAlgValuesSupported []string `json:"id_token_signing_alg_values_supported"`
 
-	// OpenID Connect Default ID Token Signing Algorithms
-	//
-	// Algorithm used to sign OpenID Connect ID Tokens.
-	//
-	// required: true
-	IDTokenSignedResponseAlg []string `json:"id_token_signed_response_alg"`
-
-	// OpenID Connect User Userinfo Signing Algorithm
-	//
-	// Algorithm used to sign OpenID Connect Userinfo Responses.
-	//
-	// required: true
-	UserinfoSignedResponseAlg []string `json:"userinfo_signed_response_alg"`
-
 	// OpenID Connect Request Parameter Supported
 	//
 	// Boolean value specifying whether the OP supports use of the request parameter, with true indicating support.
@@ -458,16 +444,6 @@ type oidcConfiguration struct {
 	// by this authorization server.
 	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 
-	// OpenID Connect Verifiable Credentials Endpoint
-	//
-	// Contains the URL of the Verifiable Credentials Endpoint.
-	CredentialsEndpointDraft00 string `json:"credentials_endpoint_draft_00"`
-
-	// OpenID Connect Verifiable Credentials Supported
-	//
-	// JSON array containing a list of the Verifiable Credentials supported by this authorization server.
-	CredentialsSupportedDraft00 []CredentialSupportedDraft00 `json:"credentials_supported_draft_00"`
-
 	// OIDC4VCI extension
 	AuthorizationDetailsTypesSupported []string `json:"authorization_details_types_supported,omitempty"`
 
@@ -487,33 +463,6 @@ type oidcConfiguration struct {
 
 	// RFC 9207 iss parameter support
 	AuthorizationResponseIssParameterSupported bool `json:"authorization_response_iss_parameter_supported,omitempty"`
-}
-
-// Verifiable Credentials Metadata (Draft 00)
-//
-// Includes information about the supported verifiable credentials.
-//
-// swagger:model credentialSupportedDraft00
-type CredentialSupportedDraft00 struct {
-	// OpenID Connect Verifiable Credentials Format
-	//
-	// Contains the format that is supported by this authorization server.
-	Format string `json:"format"`
-
-	// OpenID Connect Verifiable Credentials Types
-	//
-	// Contains the types of verifiable credentials supported.
-	Types []string `json:"types"`
-
-	// OpenID Connect Verifiable Credentials Cryptographic Binding Methods Supported
-	//
-	// Contains a list of cryptographic binding methods supported for signing the proof.
-	CryptographicBindingMethodsSupported []string `json:"cryptographic_binding_methods_supported"`
-
-	// OpenID Connect Verifiable Credentials Cryptographic Suites Supported
-	//
-	// Contains a list of cryptographic suites methods supported for signing the proof.
-	CryptographicSuitesSupported []string `json:"cryptographic_suites_supported"`
 }
 
 // swagger:route GET /.well-known/openid-configuration oidc discoverOidcConfiguration
@@ -575,8 +524,6 @@ func (h *Handler) discoverOidcConfiguration(w http.ResponseWriter, r *http.Reque
 		UserinfoEndpoint:                       h.c.OIDCDiscoveryUserinfoEndpoint(ctx).String(),
 		TokenEndpointAuthMethodsSupported:      authMethods,
 		IDTokenSigningAlgValuesSupported:       []string{key.Algorithm},
-		IDTokenSignedResponseAlg:               []string{key.Algorithm},
-		UserinfoSignedResponseAlg:              []string{key.Algorithm},
 		GrantTypesSupported:                    grantTypes,
 		ResponseModesSupported:                 []string{"query", "fragment", "form_post"},
 		UserinfoSigningAlgValuesSupported:      []string{"none", key.Algorithm},
@@ -590,18 +537,6 @@ func (h *Handler) discoverOidcConfiguration(w http.ResponseWriter, r *http.Reque
 		EndSessionEndpoint:                     urlx.AppendPaths(h.c.IssuerURL(ctx), LogoutPath).String(),
 		RequestObjectSigningAlgValuesSupported: []string{"none", "RS256", "ES256"},
 		CodeChallengeMethodsSupported:          codeChallengeMethodsSupported,
-		CredentialsEndpointDraft00:             h.c.CredentialsEndpointURL(ctx).String(),
-		CredentialsSupportedDraft00: []CredentialSupportedDraft00{{
-			Format:                               "jwt_vc_json",
-			Types:                                []string{"VerifiableCredential", "UserInfoCredential"},
-			CryptographicBindingMethodsSupported: []string{"jwk"},
-			CryptographicSuitesSupported: []string{
-				"PS256", "RS256", "ES256",
-				"PS384", "RS384", "ES384",
-				"PS512", "RS512", "ES512",
-				"EdDSA",
-			},
-		}},
 	}
 
 	// OIDC4VCI extension
