@@ -219,6 +219,11 @@ func (h *Handler) resolveAuthorizationDetails(data *PreAuthorizedCodeData, reque
 						WithHint("requested credential_configuration_id not authorized").
 						WithDebugf("credential_configuration_id %q not in allowed set", id))
 				}
+
+				// Ensure credential_identifiers is present per OID4VCI 1.0 Section 6.2.
+				if _, hasIDs := obj["credential_identifiers"]; !hasIDs {
+					obj["credential_identifiers"] = []interface{}{id}
+				}
 			}
 		}
 
@@ -232,6 +237,7 @@ func (h *Handler) resolveAuthorizationDetails(data *PreAuthorizedCodeData, reque
 		defaultDetails = append(defaultDetails, map[string]interface{}{
 			"type":                        "openid_credential",
 			"credential_configuration_id": id,
+			"credential_identifiers":      []interface{}{id},
 		})
 	}
 
@@ -296,7 +302,18 @@ func (h *Handler) PopulateTokenEndpointResponse(ctx context.Context, requester f
 	}
 
 	responder.SetAccessToken(access)
-	responder.SetTokenType("bearer")
+
+	// Set token_type based on whether DPoP was used.
+	// If the DPoP handler set a cnf claim (jkt thumbprint) in the session,
+	// the token is DPoP-bound and token_type must be "DPoP" per RFC 9449.
+	tokenType := "bearer"
+	if session, ok := requester.GetSession().(fosite.ExtraClaimsSession); ok {
+		if _, hasCnf := session.GetExtraClaims()["cnf"]; hasCnf {
+			tokenType = "DPoP"
+		}
+	}
+	responder.SetTokenType(tokenType)
+
 	responder.SetExpiresIn(getExpiresIn(requester, fosite.AccessToken, atLifespan, time.Now().UTC()))
 	responder.SetScopes(requester.GetGrantedScopes())
 
