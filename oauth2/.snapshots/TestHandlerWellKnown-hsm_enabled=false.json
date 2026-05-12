@@ -10,31 +10,6 @@
     "plain",
     "S256"
   ],
-  "credentials_endpoint_draft_00": "http://hydra.localhost/credentials",
-  "credentials_supported_draft_00": [
-    {
-      "cryptographic_binding_methods_supported": [
-        "jwk"
-      ],
-      "cryptographic_suites_supported": [
-        "PS256",
-        "RS256",
-        "ES256",
-        "PS384",
-        "RS384",
-        "ES384",
-        "PS512",
-        "RS512",
-        "ES512",
-        "EdDSA"
-      ],
-      "format": "jwt_vc_json",
-      "types": [
-        "VerifiableCredential",
-        "UserInfoCredential"
-      ]
-    }
-  ],
   "device_authorization_endpoint": "http://hydra.localhost/oauth2/device/auth",
   "end_session_endpoint": "http://hydra.localhost/oauth2/sessions/logout",
   "frontchannel_logout_session_supported": true,
@@ -46,14 +21,12 @@
     "refresh_token",
     "urn:ietf:params:oauth:grant-type:device_code"
   ],
-  "id_token_signed_response_alg": [
-    "ES256"
-  ],
   "id_token_signing_alg_values_supported": [
     "ES256"
   ],
   "issuer": "http://hydra.localhost",
   "jwks_uri": "http://hydra.localhost/.well-known/jwks.json",
+  "pushed_authorization_request_endpoint": "http://hydra.localhost/oauth2/par",
   "registration_endpoint": "http://client-register/registration",
   "request_object_signing_alg_values_supported": [
     "none",
@@ -94,9 +67,6 @@
     "none"
   ],
   "userinfo_endpoint": "/userinfo",
-  "userinfo_signed_response_alg": [
-    "ES256"
-  ],
   "userinfo_signing_alg_values_supported": [
     "none",
     "ES256"
