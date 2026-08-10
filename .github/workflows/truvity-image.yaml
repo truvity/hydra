@@ -1,0 +1,180 @@
+# Truvity-specific container image build. See TRUVITY.md.
+#
+# This is the ONLY Truvity-owned workflow that this fork needs. Every other
+# file under .github/ belongs to upstream (ory/hydra) — do not edit those, or
+# every manual rebase turns into a conflict. The filename is deliberately
+# prefixed `truvity-` so upstream can never collide with it.
+#
+# What it does: builds ghcr.io/truvity/hydra from upstream's own, unmodified
+# .docker/Dockerfile-distroless-static (the same Dockerfile ory publishes its
+# images from) and pushes a multi-arch amd64+arm64 manifest. Image only — the
+# Helm chart lives in truvity/bar (eudi), not here.
+#
+# Because that Dockerfile only COPYs a pre-built binary into a distroless base
+# (no RUN steps), the two architectures are cross-compiled with the Go
+# toolchain and then assembled into one manifest — no QEMU, no emulation.
+#
+# arm64 is not optional: the fleet's arm64 node pools carry an
+# arch=arm64:NoSchedule taint, and an amd64-only image is unschedulable there.
+#
+# Third-party actions are pinned to commit SHAs with the version in a trailing
+# comment (house rule).
+name: Truvity image
+
+on:
+  push:
+    tags:
+      - "v*-oidc4vci.*"
+  # Lets us (re)build an existing tag without moving or re-pushing it.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag, branch or commit to build (default: this run's ref)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: truvity-image-${{ inputs.ref || github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/truvity/hydra
+
+jobs:
+  image:
+    name: Build and push ghcr.io/truvity/hydra
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Resolve image tag and build metadata
+        id: meta
+        env:
+          # Never interpolate a workflow input straight into a shell script.
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          REF="${INPUT_REF:-${GITHUB_REF_NAME}}"
+          # Docker tags allow [A-Za-z0-9_.-] only; branch names may contain "/".
+          TAG="${REF//\//-}"
+          {
+            echo "tag=${TAG}"
+            echo "version=${TAG#v}"
+            echo "commit=$(git rev-parse HEAD)"
+            echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >>"${GITHUB_OUTPUT}"
+
+      - name: Cross-compile hydra for linux/amd64 and linux/arm64
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          COMMIT: ${{ steps.meta.outputs.commit }}
+          DATE: ${{ steps.meta.outputs.date }}
+        run: |
+          set -euo pipefail
+          LDFLAGS="-s -w"
+          LDFLAGS="${LDFLAGS} -X github.com/ory/hydra/v2/driver/config.Version=${VERSION}"
+          LDFLAGS="${LDFLAGS} -X github.com/ory/hydra/v2/driver/config.Commit=${COMMIT}"
+          LDFLAGS="${LDFLAGS} -X github.com/ory/hydra/v2/driver/config.Date=${DATE}"
+          for arch in amd64 arm64; do
+            # One context directory per architecture, holding exactly the
+            # `hydra` binary that upstream's Dockerfile expects to COPY.
+            mkdir -p "${RUNNER_TEMP}/ctx-${arch}"
+            CGO_ENABLED=0 GOOS=linux GOARCH="${arch}" go build \
+              -buildmode=exe \
+              -tags=netgo \
+              -trimpath \
+              -ldflags "${LDFLAGS}" \
+              -o "${RUNNER_TEMP}/ctx-${arch}/hydra" \
+              .
+          done
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push linux/amd64
+        id: amd64
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ${{ runner.temp }}/ctx-amd64
+          file: ${{ github.workspace }}/.docker/Dockerfile-distroless-static
+          platforms: linux/amd64
+          provenance: mode=max
+          sbom: true
+          labels: |
+            org.opencontainers.image.title=hydra
+            org.opencontainers.image.description=Ory Hydra with Truvity OIDC4VCI changes
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.commit }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.date }}
+          outputs: |-
+            type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Build and push linux/arm64
+        id: arm64
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ${{ runner.temp }}/ctx-arm64
+          file: ${{ github.workspace }}/.docker/Dockerfile-distroless-static
+          platforms: linux/arm64
+          provenance: mode=max
+          sbom: true
+          labels: |
+            org.opencontainers.image.title=hydra
+            org.opencontainers.image.description=Ory Hydra with Truvity OIDC4VCI changes
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.commit }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.date }}
+          outputs: |-
+            type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Assemble and push the multi-arch manifest
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          AMD64_DIGEST: ${{ steps.amd64.outputs.digest }}
+          ARM64_DIGEST: ${{ steps.arm64.outputs.digest }}
+          SOURCE: https://github.com/${{ github.repository }}
+          REVISION: ${{ steps.meta.outputs.commit }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            --annotation "index:org.opencontainers.image.source=${SOURCE}" \
+            --annotation "index:org.opencontainers.image.revision=${REVISION}" \
+            --tag "${IMAGE}:${TAG}" \
+            "${IMAGE}@${AMD64_DIGEST}" \
+            "${IMAGE}@${ARM64_DIGEST}"
+
+      - name: Verify the manifest carries both architectures
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools inspect "${IMAGE}:${TAG}"
+          RAW="$(docker buildx imagetools inspect --raw "${IMAGE}:${TAG}")"
+          for arch in amd64 arm64; do
+            echo "${RAW}" \
+              | jq -e --arg a "${arch}" \
+                  '.manifests[] | select(.platform.os == "linux" and .platform.architecture == $a)' \
+                  >/dev/null \
+              || { echo "::error::${IMAGE}:${TAG} is missing linux/${arch}"; exit 1; }
+          done
