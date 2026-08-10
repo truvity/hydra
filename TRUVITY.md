@@ -46,12 +46,12 @@ the only document the fork itself carries.
 
 What is over there:
 
-| Path                        | Contents                                                                                   |
-| --------------------------- | ------------------------------------------------------------------------------------------ |
-| `ai-context/`               | Architecture overview, Hydra internals, the OIDC4VCI AS requirement gap analysis, the AS ↔ Credential Issuer boundary, per-feature design notes |
-| `features/`                 | What each shipped feature does (DPoP, RAR + consent, pre-authorized code, HAIP metadata, wallet attestation) |
-| `integration/`              | OIDC4VCI integration guide, `authorization_details` in the Consent App, secret management and key rotation |
-| `kiro/specs/`, `kiro/steering/` | Kiro specs per capability, and the steering rules for editing this fork's Go code       |
+| Path                            | Contents                                                                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ai-context/`                   | Architecture overview, Hydra internals, the OIDC4VCI AS requirement gap analysis, the AS ↔ Credential Issuer boundary, per-feature design notes |
+| `features/`                     | What each shipped feature does (DPoP, RAR + consent, pre-authorized code, HAIP metadata, wallet attestation)                                    |
+| `integration/`                  | OIDC4VCI integration guide, `authorization_details` in the Consent App, secret management and key rotation                                      |
+| `kiro/specs/`, `kiro/steering/` | Kiro specs per capability, and the steering rules for editing this fork's Go code                                                               |
 
 The copies of the OIDC4VCI, HAIP and RFC specifications we implement against
 stay here, under [`docs/oidc4vci/`](docs/oidc4vci/), because they are what the
@@ -59,11 +59,11 @@ code is read against.
 
 ## Branch model
 
-| Branch                   | What it is                                                                                                                          |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `upstream-master`        | Straight mirror of `ory/hydra` `master`. **No Truvity commits ever.** This is what we rebase onto.                                  |
-| `hydra-oidc4vci-changes` | **The integration branch.** `upstream-master` plus our OIDC4VCI commits. Feature branches and release tags come off this.           |
-| `master`                 | Default branch, an old upstream snapshot. Carries no Truvity commits and is not the integration branch — do not develop against it. |
+| Branch                   | What it is                                                                                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `upstream-master`        | Straight mirror of `ory/hydra` `master`. **No Truvity commits ever.** This is what we rebase onto.                                                             |
+| `hydra-oidc4vci-changes` | **The integration branch, and the repository's default branch.** `upstream-master` plus our OIDC4VCI commits. Feature branches and release tags come off this. |
+| `master`                 | An old upstream snapshot, kept only because upstream's own workflows key off the name. Carries no Truvity commits — do not develop against it.                 |
 
 Feature work branches off `hydra-oidc4vci-changes` and is merged back into it by
 PR.
@@ -107,8 +107,8 @@ To rebuild an existing tag without moving it, run the workflow via
 
 ## Running locally
 
-`quickstart-oidc4vci.yml` brings up Hydra + PostgreSQL + the login/consent node
-+ the mock issuer. The helper script builds the image for your host
+`quickstart-oidc4vci.yml` brings up Hydra, PostgreSQL, the login/consent node
+and the mock issuer. The helper script builds the image for your host
 architecture (plain `go build` into upstream's
 `.docker/Dockerfile-distroless-static`, the same recipe the image workflow uses)
 and starts the stack:
@@ -129,20 +129,20 @@ running stack and cover the full flow — PAR, DPoP, RAR, `private_key_jwt` and
 go test -v -count=1 -timeout=60s ./test/oidc4vci-external/...
 ```
 
-See `test/oidc4vci-external/README.md` for the environment variables, the
-cached test data and the HAIP attester key generator.
+See `test/oidc4vci-external/README.md` for the environment variables, the cached
+test data and the HAIP attester key generator.
 
 ## Where our code lives
 
 Almost all of it sits at paths upstream does not use, so it never conflicts:
 
-| Path                                                                                                              | What                                                       |
-| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `fosite/handler/{preauth,dpop,rar,wallet_attestation}/`                                                           | One package per feature: handler, storage interface, tests. |
-| `fosite/compose/compose_{preauth,dpop,rar,wallet_attestation}.go`                                                 | Factories, alongside upstream's own `compose_*.go`.        |
-| `persistence/sql/persister_{preauth,dpop,par}.go`, `persistence/sql/migrations/*_oidc4vci_*.{up,down}.sql`        | Storage and schema. New tables only, never a change to an upstream table; every table carries `nid`. |
-| `driver/registry_par.go`, `driver/dsn_rotating_driver.go`                                                         | Registry wiring kept out of upstream's files where possible. |
-| `oauth2/handler_preauth.go`, `oauth2/*_test.go`, `test/oidc4vci/`, `test/oidc4vci-external/`                      | Endpoint additions and our tests.                          |
+| Path                                                                                                       | What                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `fosite/handler/{preauth,dpop,rar,wallet_attestation}/`                                                    | One package per feature: handler, storage interface, tests.                                          |
+| `fosite/compose/compose_{preauth,dpop,rar,wallet_attestation}.go`                                          | Factories, alongside upstream's own `compose_*.go`.                                                  |
+| `persistence/sql/persister_{preauth,dpop,par}.go`, `persistence/sql/migrations/*_oidc4vci_*.{up,down}.sql` | Storage and schema. New tables only, never a change to an upstream table; every table carries `nid`. |
+| `driver/registry_par.go`, `driver/dsn_rotating_driver.go`                                                  | Registry wiring kept out of upstream's files where possible.                                         |
+| `oauth2/handler_preauth.go`, `oauth2/*_test.go`, `test/oidc4vci/`, `test/oidc4vci-external/`               | Endpoint additions and our tests.                                                                    |
 
 New migrations are named `<timestamp>_oidc4vci_<what>.{up,down}.sql` so they are
 recognisable at a glance and sort after upstream's.
@@ -155,17 +155,17 @@ every addition with an `// OIDC4VCI extension` comment, add struct fields at the
 composition, and when a conflict comes up take upstream's version first and
 re-apply our block on top.
 
-| File                                  | Risk       | What we add                                                    |
-| ------------------------------------- | ---------- | ---------------------------------------------------------------- |
-| `oauth2/handler.go`                   | High       | Discovery metadata fields + their population — upstream changes this file often |
-| `fosite/fosite.go`                    | Medium     | Our provider interfaces embedded in `Configurator`             |
-| `fosite/config.go`, `fositex/config.go` | Medium   | The provider interfaces themselves, and their defaults         |
-| `fosite/authorize_write.go`, `fosite/authorize_error.go` | Medium | RFC 9207 `iss` on success and error responses |
-| `fosite/client_authentication.go`     | Medium     | `attest_jwt_client_auth` dispatch                              |
-| `flow/consent_types.go`, `flow/flow.go` | Medium   | `AuthorizationDetails` and `IssuerState` on the consent request |
-| `driver/registry_sql.go`, `driver/config/provider.go` | Medium | Storage accessors, factory registration, config keys |
-| `persistence/definitions.go`, `consent/strategy_default.go`, `cmd/server/handler.go` | Low | Table registration and plumbing |
-| `.schema/config.schema.json`, `spec/config.json`, `oauth2/.snapshots/*` | Low | Generated — regenerate, never hand-edit |
+| File                                                                                 | Risk   | What we add                                                                     |
+| ------------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------- |
+| `oauth2/handler.go`                                                                  | High   | Discovery metadata fields + their population — upstream changes this file often |
+| `fosite/fosite.go`                                                                   | Medium | Our provider interfaces embedded in `Configurator`                              |
+| `fosite/config.go`, `fositex/config.go`                                              | Medium | The provider interfaces themselves, and their defaults                          |
+| `fosite/authorize_write.go`, `fosite/authorize_error.go`                             | Medium | RFC 9207 `iss` on success and error responses                                   |
+| `fosite/client_authentication.go`                                                    | Medium | `attest_jwt_client_auth` dispatch                                               |
+| `flow/consent_types.go`, `flow/flow.go`                                              | Medium | `AuthorizationDetails` and `IssuerState` on the consent request                 |
+| `driver/registry_sql.go`, `driver/config/provider.go`                                | Medium | Storage accessors, factory registration, config keys                            |
+| `persistence/definitions.go`, `consent/strategy_default.go`, `cmd/server/handler.go` | Low    | Table registration and plumbing                                                 |
+| `.schema/config.schema.json`, `spec/config.json`, `oauth2/.snapshots/*`              | Low    | Generated — regenerate, never hand-edit                                         |
 
 After a rebase, check the two things that silently break: the discovery document
 (`curl <public>/.well-known/openid-configuration | jq`) must still advertise
@@ -221,15 +221,15 @@ Every file we add or change is a conflict at the next rebase, so:
 
 ### Truvity-owned files in this repo
 
-| Path                                                                                                                       | Purpose                                                                     |
-| ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `TRUVITY.md`                                                                                                               | This document — the only prose the fork carries. Design docs live in `truvity/bar`. |
-| `.github/workflows/truvity-image.yaml`                                                                                     | GHCR image build. The only Truvity CI.                                      |
-| `build-and-run-oidc4vci-local.sh`, `quickstart-oidc4vci.yml`, `contrib/quickstart/oidc4vci/`, `.docker/Dockerfile-oidc4vci` | Local development and demo.                                                 |
-| `devbox.json`, `devbox.lock`, `.envrc`                                                                                     | Local toolchain (dev shell).                                                |
-| `docs/oidc4vci/`                                                                                                           | Copies of the specs and RFCs the code implements.                           |
-| `test/oidc4vci/`, `test/oidc4vci-external/`                                                                                | Our end-to-end tests.                                                       |
-| The paths in [Where our code lives](#where-our-code-lives)                                                                 | The features themselves.                                                    |
+| Path                                                                                                                        | Purpose                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `TRUVITY.md`                                                                                                                | This document — the only prose the fork carries. Design docs live in `truvity/bar`. |
+| `.github/workflows/truvity-image.yaml`                                                                                      | GHCR image build. The only Truvity CI.                                              |
+| `build-and-run-oidc4vci-local.sh`, `quickstart-oidc4vci.yml`, `contrib/quickstart/oidc4vci/`, `.docker/Dockerfile-oidc4vci` | Local development and demo.                                                         |
+| `devbox.json`, `devbox.lock`, `.envrc`                                                                                      | Local toolchain (dev shell).                                                        |
+| `docs/oidc4vci/`                                                                                                            | Copies of the specs and RFCs the code implements.                                   |
+| `test/oidc4vci/`, `test/oidc4vci-external/`                                                                                 | Our end-to-end tests.                                                               |
+| The paths in [Where our code lives](#where-our-code-lives)                                                                  | The features themselves.                                                            |
 
 Everything else belongs to upstream.
 
