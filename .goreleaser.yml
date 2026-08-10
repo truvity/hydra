@@ -1,0 +1,15 @@
+version: 2
+
+includes:
+  - from_url:
+      url: https://raw.githubusercontent.com/ory/xgoreleaser/master/build.tmpl.yml
+
+variables:
+  brew_name: hydra
+  brew_description: "The Ory OAuth2 and OpenID Connect Platform (Ory Hydra)"
+  buildinfo_hash: "github.com/ory/hydra/v2/driver/config.Commit"
+  buildinfo_tag: "github.com/ory/hydra/v2/driver/config.Version"
+  buildinfo_date: "github.com/ory/hydra/v2/driver/config.Date"
+  dockerfile_alpine: ".docker/Dockerfile-alpine"
+  dockerfile_static: ".docker/Dockerfile-distroless-static"
+project_name: hydra
