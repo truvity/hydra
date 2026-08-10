@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Build Hydra with GoReleaser (snapshot mode) and run the OIDC4VCI
+# Build the Hydra image for the host architecture and run the OIDC4VCI
 # quickstart compose stack, streaming container logs to the console.
 #
 # Usage:
@@ -32,7 +32,7 @@ trap shutdown INT TERM
 
 # --- preflight ---------------------------------------------------------------
 
-for cmd in docker goreleaser; do
+for cmd in docker go; do
   if ! command -v "$cmd" &>/dev/null; then
     echo "error: '$cmd' is required but not installed" >&2
     exit 1
@@ -55,31 +55,50 @@ case "$(uname -m)" in
     ;;
 esac
 
-ARCH_TAG="${LOCAL_TAG}-${ARCH}"
-
 echo "==> host architecture: ${ARCH}"
-echo "==> target image:      ${IMAGE}:${LOCAL_TAG} (from ${IMAGE}:${ARCH_TAG})"
+echo "==> target image:      ${IMAGE}:${LOCAL_TAG}"
 
-# --- build with goreleaser ---------------------------------------------------
+# --- build the image ---------------------------------------------------------
+#
+# Same recipe as .github/workflows/truvity-image.yaml: cross-compile the binary
+# with the Go toolchain, then COPY it into upstream's own, unmodified
+# .docker/Dockerfile-distroless-static. Host architecture only — the published
+# multi-arch manifest is the workflow's job, not this script's.
 
 if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
-  echo "==> SKIP_BUILD=1, skipping goreleaser build"
+  echo "==> SKIP_BUILD=1, reusing the existing ${IMAGE}:${LOCAL_TAG} image"
+
+  if ! docker image inspect "${IMAGE}:${LOCAL_TAG}" &>/dev/null; then
+    echo "error: ${IMAGE}:${LOCAL_TAG} does not exist — run without SKIP_BUILD first" >&2
+    exit 1
+  fi
 else
-  echo "==> building hydra via goreleaser (snapshot)"
-  goreleaser release --snapshot --clean --skip=sign
+  echo "==> building hydra for linux/${ARCH}"
+
+  CTX="$(mktemp -d)"
+
+  LDFLAGS="-s -w"
+  LDFLAGS="${LDFLAGS} -X github.com/ory/hydra/v2/driver/config.Version=${LOCAL_TAG}"
+  LDFLAGS="${LDFLAGS} -X github.com/ory/hydra/v2/driver/config.Commit=$(git rev-parse HEAD)"
+  LDFLAGS="${LDFLAGS} -X github.com/ory/hydra/v2/driver/config.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  CGO_ENABLED=0 GOOS=linux GOARCH="${ARCH}" go build \
+    -buildmode=exe \
+    -tags=netgo \
+    -trimpath \
+    -ldflags "${LDFLAGS}" \
+    -o "${CTX}/hydra" \
+    .
+
+  echo "==> packaging ${IMAGE}:${LOCAL_TAG}"
+  docker build \
+    --platform "linux/${ARCH}" \
+    -f .docker/Dockerfile-distroless-static \
+    -t "${IMAGE}:${LOCAL_TAG}" \
+    "${CTX}"
+
+  rm -rf "${CTX}"
 fi
-
-# --- re-tag arch-specific image to the stable :local tag ---------------------
-
-if ! docker image inspect "${IMAGE}:${ARCH_TAG}" &>/dev/null; then
-  echo "error: expected image ${IMAGE}:${ARCH_TAG} not found after build" >&2
-  echo "       available tags for ${IMAGE}:" >&2
-  docker images "${IMAGE}" --format '         {{.Repository}}:{{.Tag}}' >&2
-  exit 1
-fi
-
-echo "==> tagging ${IMAGE}:${ARCH_TAG} -> ${IMAGE}:${LOCAL_TAG}"
-docker tag "${IMAGE}:${ARCH_TAG}" "${IMAGE}:${LOCAL_TAG}"
 
 # --- bring the stack up ------------------------------------------------------
 
