@@ -23,14 +23,16 @@ var _ MappedNullable = &OAuth2ConsentRequest{}
 // OAuth2ConsentRequest struct for OAuth2ConsentRequest
 type OAuth2ConsentRequest struct {
 	// ACR represents the Authentication AuthorizationContext Class Reference value for this authentication session. You can use it to express that, for example, a user authenticated using two factor authentication.
-	Acr *string  `json:"acr,omitempty"`
-	Amr []string `json:"amr,omitempty"`
+	Acr                  *string     `json:"acr,omitempty"`
+	Amr                  []string    `json:"amr,omitempty"`
+	AuthorizationDetails interface{} `json:"authorization_details,omitempty"`
 	// Challenge is used to retrieve/accept/deny the consent request.
 	Challenge string        `json:"challenge"`
 	Client    *OAuth2Client `json:"client,omitempty"`
 	// ConsentRequestID is the ID of the consent request.
 	ConsentRequestId *string     `json:"consent_request_id,omitempty"`
 	Context          interface{} `json:"context,omitempty"`
+	IssuerState      *string     `json:"issuer_state,omitempty"`
 	// LoginChallenge is the login challenge this consent challenge belongs to. It can be used to associate a login and consent request in the login & consent app.
 	LoginChallenge *string `json:"login_challenge,omitempty"`
 	// LoginSessionID is the login session ID. If the user-agent reuses a login session (via cookie / remember flag) this ID will remain the same. If the user-agent did not have an existing authentication session (e.g. remember is false) this will be a new random value. This value is used as the \"sid\" parameter in the ID Token and in OIDC Front-/Back- channel logout. It's value can generally be used to associate consecutive login requests by a certain user.
@@ -128,6 +130,39 @@ func (o *OAuth2ConsentRequest) HasAmr() bool {
 // SetAmr gets a reference to the given []string and assigns it to the Amr field.
 func (o *OAuth2ConsentRequest) SetAmr(v []string) {
 	o.Amr = v
+}
+
+// GetAuthorizationDetails returns the AuthorizationDetails field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *OAuth2ConsentRequest) GetAuthorizationDetails() interface{} {
+	if o == nil {
+		var ret interface{}
+		return ret
+	}
+	return o.AuthorizationDetails
+}
+
+// GetAuthorizationDetailsOk returns a tuple with the AuthorizationDetails field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *OAuth2ConsentRequest) GetAuthorizationDetailsOk() (*interface{}, bool) {
+	if o == nil || IsNil(o.AuthorizationDetails) {
+		return nil, false
+	}
+	return &o.AuthorizationDetails, true
+}
+
+// HasAuthorizationDetails returns a boolean if a field has been set.
+func (o *OAuth2ConsentRequest) HasAuthorizationDetails() bool {
+	if o != nil && !IsNil(o.AuthorizationDetails) {
+		return true
+	}
+
+	return false
+}
+
+// SetAuthorizationDetails gets a reference to the given interface{} and assigns it to the AuthorizationDetails field.
+func (o *OAuth2ConsentRequest) SetAuthorizationDetails(v interface{}) {
+	o.AuthorizationDetails = v
 }
 
 // GetChallenge returns the Challenge field value
@@ -249,6 +284,38 @@ func (o *OAuth2ConsentRequest) HasContext() bool {
 // SetContext gets a reference to the given interface{} and assigns it to the Context field.
 func (o *OAuth2ConsentRequest) SetContext(v interface{}) {
 	o.Context = v
+}
+
+// GetIssuerState returns the IssuerState field value if set, zero value otherwise.
+func (o *OAuth2ConsentRequest) GetIssuerState() string {
+	if o == nil || IsNil(o.IssuerState) {
+		var ret string
+		return ret
+	}
+	return *o.IssuerState
+}
+
+// GetIssuerStateOk returns a tuple with the IssuerState field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+func (o *OAuth2ConsentRequest) GetIssuerStateOk() (*string, bool) {
+	if o == nil || IsNil(o.IssuerState) {
+		return nil, false
+	}
+	return o.IssuerState, true
+}
+
+// HasIssuerState returns a boolean if a field has been set.
+func (o *OAuth2ConsentRequest) HasIssuerState() bool {
+	if o != nil && !IsNil(o.IssuerState) {
+		return true
+	}
+
+	return false
+}
+
+// SetIssuerState gets a reference to the given string and assigns it to the IssuerState field.
+func (o *OAuth2ConsentRequest) SetIssuerState(v string) {
+	o.IssuerState = &v
 }
 
 // GetLoginChallenge returns the LoginChallenge field value if set, zero value otherwise.
@@ -523,6 +590,9 @@ func (o OAuth2ConsentRequest) ToMap() (map[string]interface{}, error) {
 	if !IsNil(o.Amr) {
 		toSerialize["amr"] = o.Amr
 	}
+	if o.AuthorizationDetails != nil {
+		toSerialize["authorization_details"] = o.AuthorizationDetails
+	}
 	toSerialize["challenge"] = o.Challenge
 	if !IsNil(o.Client) {
 		toSerialize["client"] = o.Client
@@ -532,6 +602,9 @@ func (o OAuth2ConsentRequest) ToMap() (map[string]interface{}, error) {
 	}
 	if o.Context != nil {
 		toSerialize["context"] = o.Context
+	}
+	if !IsNil(o.IssuerState) {
+		toSerialize["issuer_state"] = o.IssuerState
 	}
 	if !IsNil(o.LoginChallenge) {
 		toSerialize["login_challenge"] = o.LoginChallenge

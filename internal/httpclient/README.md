@@ -95,6 +95,7 @@ Class | Method | HTTP request | Description
 *OAuth2API* | [**AcceptOAuth2LogoutRequest**](docs/OAuth2API.md#acceptoauth2logoutrequest) | **Put** /admin/oauth2/auth/requests/logout/accept | Accept OAuth 2.0 Session Logout Request
 *OAuth2API* | [**AcceptUserCodeRequest**](docs/OAuth2API.md#acceptusercoderequest) | **Put** /admin/oauth2/auth/requests/device/accept | Accepts a device grant user_code request
 *OAuth2API* | [**CreateOAuth2Client**](docs/OAuth2API.md#createoauth2client) | **Post** /admin/clients | Create OAuth 2.0 Client
+*OAuth2API* | [**CreatePreAuthorizedCode**](docs/OAuth2API.md#createpreauthorizedcode) | **Post** /admin/oauth2/preauth | Create Pre-Authorized Code
 *OAuth2API* | [**DeleteOAuth2Client**](docs/OAuth2API.md#deleteoauth2client) | **Delete** /admin/clients/{id} | Delete OAuth 2.0 Client
 *OAuth2API* | [**DeleteOAuth2Token**](docs/OAuth2API.md#deleteoauth2token) | **Delete** /admin/oauth2/tokens | Delete OAuth 2.0 Access Tokens from specific OAuth 2.0 Client
 *OAuth2API* | [**DeleteTrustedOAuth2JwtGrantIssuer**](docs/OAuth2API.md#deletetrustedoauth2jwtgrantissuer) | **Delete** /admin/trust/grants/jwt-bearer/issuers/{id} | Delete Trusted OAuth2 JWT Bearer Grant Type Issuer
@@ -109,6 +110,7 @@ Class | Method | HTTP request | Description
 *OAuth2API* | [**ListTrustedOAuth2JwtGrantIssuers**](docs/OAuth2API.md#listtrustedoauth2jwtgrantissuers) | **Get** /admin/trust/grants/jwt-bearer/issuers | List Trusted OAuth2 JWT Bearer Grant Type Issuers
 *OAuth2API* | [**OAuth2Authorize**](docs/OAuth2API.md#oauth2authorize) | **Get** /oauth2/auth | OAuth 2.0 Authorize Endpoint
 *OAuth2API* | [**OAuth2DeviceFlow**](docs/OAuth2API.md#oauth2deviceflow) | **Post** /oauth2/device/auth | The OAuth 2.0 Device Authorize Endpoint
+*OAuth2API* | [**OAuth2PushedAuthorize**](docs/OAuth2API.md#oauth2pushedauthorize) | **Post** /oauth2/par | OAuth 2.0 Pushed Authorization Request (PAR)
 *OAuth2API* | [**Oauth2TokenExchange**](docs/OAuth2API.md#oauth2tokenexchange) | **Post** /oauth2/token | The OAuth 2.0 Token Endpoint
 *OAuth2API* | [**PatchOAuth2Client**](docs/OAuth2API.md#patchoauth2client) | **Patch** /admin/clients/{id} | Patch OAuth 2.0 Client
 *OAuth2API* | [**PerformOAuth2DeviceVerificationFlow**](docs/OAuth2API.md#performoauth2deviceverificationflow) | **Get** /oauth2/device/verify | OAuth 2.0 Device Verification Endpoint
@@ -139,8 +141,8 @@ Class | Method | HTTP request | Description
  - [AcceptOAuth2ConsentRequestSession](docs/AcceptOAuth2ConsentRequestSession.md)
  - [AcceptOAuth2LoginRequest](docs/AcceptOAuth2LoginRequest.md)
  - [CreateJsonWebKeySet](docs/CreateJsonWebKeySet.md)
+ - [CreatePreAuthorizedCodeBody](docs/CreatePreAuthorizedCodeBody.md)
  - [CreateVerifiableCredentialRequestBody](docs/CreateVerifiableCredentialRequestBody.md)
- - [CredentialSupportedDraft00](docs/CredentialSupportedDraft00.md)
  - [DeviceAuthorization](docs/DeviceAuthorization.md)
  - [DeviceUserAuthRequest](docs/DeviceUserAuthRequest.md)
  - [ErrorOAuth2](docs/ErrorOAuth2.md)
@@ -167,6 +169,8 @@ Class | Method | HTTP request | Description
  - [OAuth2TokenExchange](docs/OAuth2TokenExchange.md)
  - [OidcConfiguration](docs/OidcConfiguration.md)
  - [OidcUserInfo](docs/OidcUserInfo.md)
+ - [PreAuthorizedCodeResponse](docs/PreAuthorizedCodeResponse.md)
+ - [PushAuthorizeResponse](docs/PushAuthorizeResponse.md)
  - [RFC6749ErrorJson](docs/RFC6749ErrorJson.md)
  - [RejectOAuth2Request](docs/RejectOAuth2Request.md)
  - [TokenPagination](docs/TokenPagination.md)

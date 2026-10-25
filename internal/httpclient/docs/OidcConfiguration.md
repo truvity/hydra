@@ -4,27 +4,30 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**AuthorizationDetailsTypesSupported** | Pointer to **[]string** | OIDC4VCI extension | [optional] 
 **AuthorizationEndpoint** | **string** | OAuth 2.0 Authorization Endpoint URL | 
+**AuthorizationResponseIssParameterSupported** | Pointer to **bool** | RFC 9207 iss parameter support | [optional] 
 **BackchannelLogoutSessionSupported** | Pointer to **bool** | OpenID Connect Back-Channel Logout Session Required  Boolean value specifying whether the OP can pass a sid (session ID) Claim in the Logout Token to identify the RP session with the OP. If supported, the sid Claim is also included in ID Tokens issued by the OP | [optional] 
 **BackchannelLogoutSupported** | Pointer to **bool** | OpenID Connect Back-Channel Logout Supported  Boolean value specifying whether the OP supports back-channel logout, with true indicating support. | [optional] 
 **ClaimsParameterSupported** | Pointer to **bool** | OpenID Connect Claims Parameter Parameter Supported  Boolean value specifying whether the OP supports use of the claims parameter, with true indicating support. | [optional] 
 **ClaimsSupported** | Pointer to **[]string** | OpenID Connect Supported Claims  JSON array containing a list of the Claim Names of the Claims that the OpenID Provider MAY be able to supply values for. Note that for privacy or other reasons, this might not be an exhaustive list. | [optional] 
 **CodeChallengeMethodsSupported** | Pointer to **[]string** | OAuth 2.0 PKCE Supported Code Challenge Methods  JSON array containing a list of Proof Key for Code Exchange (PKCE) [RFC7636] code challenge methods supported by this authorization server. | [optional] 
-**CredentialsEndpointDraft00** | Pointer to **string** | OpenID Connect Verifiable Credentials Endpoint  Contains the URL of the Verifiable Credentials Endpoint. | [optional] 
-**CredentialsSupportedDraft00** | Pointer to [**[]CredentialSupportedDraft00**](CredentialSupportedDraft00.md) | OpenID Connect Verifiable Credentials Supported  JSON array containing a list of the Verifiable Credentials supported by this authorization server. | [optional] 
 **DeviceAuthorizationEndpoint** | **string** | OAuth 2.0 Device Authorization Endpoint URL | 
+**DpopSigningAlgValuesSupported** | Pointer to **[]string** | DPoP signing algorithms (RFC 9449 §5) | [optional] 
 **EndSessionEndpoint** | Pointer to **string** | OpenID Connect End-Session Endpoint  URL at the OP to which an RP can perform a redirect to request that the End-User be logged out at the OP. | [optional] 
 **FrontchannelLogoutSessionSupported** | Pointer to **bool** | OpenID Connect Front-Channel Logout Session Required  Boolean value specifying whether the OP can pass iss (issuer) and sid (session ID) query parameters to identify the RP session with the OP when the frontchannel_logout_uri is used. If supported, the sid Claim is also included in ID Tokens issued by the OP. | [optional] 
 **FrontchannelLogoutSupported** | Pointer to **bool** | OpenID Connect Front-Channel Logout Supported  Boolean value specifying whether the OP supports HTTP-based logout, with true indicating support. | [optional] 
 **GrantTypesSupported** | Pointer to **[]string** | OAuth 2.0 Supported Grant Types  JSON array containing a list of the OAuth 2.0 Grant Type values that this OP supports. | [optional] 
-**IdTokenSignedResponseAlg** | **[]string** | OpenID Connect Default ID Token Signing Algorithms  Algorithm used to sign OpenID Connect ID Tokens. | 
 **IdTokenSigningAlgValuesSupported** | **[]string** | OpenID Connect Supported ID Token Signing Algorithms  JSON array containing a list of the JWS signing algorithms (alg values) supported by the OP for the ID Token to encode the Claims in a JWT. | 
 **Issuer** | **string** | OpenID Connect Issuer URL  An URL using the https scheme with no query or fragment component that the OP asserts as its IssuerURL Identifier. If IssuerURL discovery is supported , this value MUST be identical to the issuer value returned by WebFinger. This also MUST be identical to the iss Claim value in ID Tokens issued from this IssuerURL. | 
 **JwksUri** | **string** | OpenID Connect Well-Known JSON Web Keys URL  URL of the OP&#39;s JSON Web Key Set [JWK] document. This contains the signing key(s) the RP uses to validate signatures from the OP. The JWK Set MAY also contain the Server&#39;s encryption key(s), which are used by RPs to encrypt requests to the Server. When both signing and encryption keys are made available, a use (Key Use) parameter value is REQUIRED for all keys in the referenced JWK Set to indicate each key&#39;s intended usage. Although some algorithms allow the same key to be used for both signatures and encryption, doing so is NOT RECOMMENDED, as it is less secure. The JWK x5c parameter MAY be used to provide X.509 representations of keys provided. When used, the bare key values MUST still be present and MUST match those in the certificate. | 
+**PreAuthorizedGrantAnonymousAccessSupported** | Pointer to **bool** | Pre-Authorized Code anonymous access (OIDC4VCI §12.3) | [optional] 
+**PushedAuthorizationRequestEndpoint** | Pointer to **string** | PAR endpoint URL (RFC 9126 §5) | [optional] 
 **RegistrationEndpoint** | Pointer to **string** | OpenID Connect Dynamic Client Registration Endpoint URL | [optional] 
 **RequestObjectSigningAlgValuesSupported** | Pointer to **[]string** | OpenID Connect Supported Request Object Signing Algorithms  JSON array containing a list of the JWS signing algorithms (alg values) supported by the OP for Request Objects, which are described in Section 6.1 of OpenID Connect Core 1.0 [OpenID.Core]. These algorithms are used both when the Request Object is passed by value (using the request parameter) and when it is passed by reference (using the request_uri parameter). | [optional] 
 **RequestParameterSupported** | Pointer to **bool** | OpenID Connect Request Parameter Supported  Boolean value specifying whether the OP supports use of the request parameter, with true indicating support. | [optional] 
 **RequestUriParameterSupported** | Pointer to **bool** | OpenID Connect Request URI Parameter Supported  Boolean value specifying whether the OP supports use of the request_uri parameter, with true indicating support. | [optional] 
+**RequirePushedAuthorizationRequests** | Pointer to **bool** | Whether PAR is required (RFC 9126 §5) | [optional] 
 **RequireRequestUriRegistration** | Pointer to **bool** | OpenID Connect Requires Request URI Registration  Boolean value specifying whether the OP requires any request_uri values used to be pre-registered using the request_uris registration parameter. | [optional] 
 **ResponseModesSupported** | Pointer to **[]string** | OAuth 2.0 Supported Response Modes  JSON array containing a list of the OAuth 2.0 response_mode values that this OP supports. | [optional] 
 **ResponseTypesSupported** | **[]string** | OAuth 2.0 Supported Response Types  JSON array containing a list of the OAuth 2.0 response_type values that this OP supports. Dynamic OpenID Providers MUST support the code, id_token, and the token id_token Response Type values. | 
@@ -34,14 +37,13 @@ Name | Type | Description | Notes
 **TokenEndpoint** | **string** | OAuth 2.0 Token Endpoint URL | 
 **TokenEndpointAuthMethodsSupported** | Pointer to **[]string** | OAuth 2.0 Supported Client Authentication Methods  JSON array containing a list of Client Authentication methods supported by this Token Endpoint. The options are client_secret_post, client_secret_basic, client_secret_jwt, and private_key_jwt, as described in Section 9 of OpenID Connect Core 1.0 | [optional] 
 **UserinfoEndpoint** | Pointer to **string** | OpenID Connect Userinfo URL  URL of the OP&#39;s UserInfo Endpoint. | [optional] 
-**UserinfoSignedResponseAlg** | **[]string** | OpenID Connect User Userinfo Signing Algorithm  Algorithm used to sign OpenID Connect Userinfo Responses. | 
 **UserinfoSigningAlgValuesSupported** | Pointer to **[]string** | OpenID Connect Supported Userinfo Signing Algorithm  JSON array containing a list of the JWS [JWS] signing algorithms (alg values) [JWA] supported by the UserInfo Endpoint to encode the Claims in a JWT [JWT]. | [optional] 
 
 ## Methods
 
 ### NewOidcConfiguration
 
-`func NewOidcConfiguration(authorizationEndpoint string, deviceAuthorizationEndpoint string, idTokenSignedResponseAlg []string, idTokenSigningAlgValuesSupported []string, issuer string, jwksUri string, responseTypesSupported []string, subjectTypesSupported []string, tokenEndpoint string, userinfoSignedResponseAlg []string, ) *OidcConfiguration`
+`func NewOidcConfiguration(authorizationEndpoint string, deviceAuthorizationEndpoint string, idTokenSigningAlgValuesSupported []string, issuer string, jwksUri string, responseTypesSupported []string, subjectTypesSupported []string, tokenEndpoint string, ) *OidcConfiguration`
 
 NewOidcConfiguration instantiates a new OidcConfiguration object
 This constructor will assign default values to properties that have it defined,
@@ -55,6 +57,31 @@ will change when the set of required properties is changed
 NewOidcConfigurationWithDefaults instantiates a new OidcConfiguration object
 This constructor will only assign default values to properties that have it defined,
 but it doesn't guarantee that properties required by API are set
+
+### GetAuthorizationDetailsTypesSupported
+
+`func (o *OidcConfiguration) GetAuthorizationDetailsTypesSupported() []string`
+
+GetAuthorizationDetailsTypesSupported returns the AuthorizationDetailsTypesSupported field if non-nil, zero value otherwise.
+
+### GetAuthorizationDetailsTypesSupportedOk
+
+`func (o *OidcConfiguration) GetAuthorizationDetailsTypesSupportedOk() (*[]string, bool)`
+
+GetAuthorizationDetailsTypesSupportedOk returns a tuple with the AuthorizationDetailsTypesSupported field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetAuthorizationDetailsTypesSupported
+
+`func (o *OidcConfiguration) SetAuthorizationDetailsTypesSupported(v []string)`
+
+SetAuthorizationDetailsTypesSupported sets AuthorizationDetailsTypesSupported field to given value.
+
+### HasAuthorizationDetailsTypesSupported
+
+`func (o *OidcConfiguration) HasAuthorizationDetailsTypesSupported() bool`
+
+HasAuthorizationDetailsTypesSupported returns a boolean if a field has been set.
 
 ### GetAuthorizationEndpoint
 
@@ -75,6 +102,31 @@ and a boolean to check if the value has been set.
 
 SetAuthorizationEndpoint sets AuthorizationEndpoint field to given value.
 
+
+### GetAuthorizationResponseIssParameterSupported
+
+`func (o *OidcConfiguration) GetAuthorizationResponseIssParameterSupported() bool`
+
+GetAuthorizationResponseIssParameterSupported returns the AuthorizationResponseIssParameterSupported field if non-nil, zero value otherwise.
+
+### GetAuthorizationResponseIssParameterSupportedOk
+
+`func (o *OidcConfiguration) GetAuthorizationResponseIssParameterSupportedOk() (*bool, bool)`
+
+GetAuthorizationResponseIssParameterSupportedOk returns a tuple with the AuthorizationResponseIssParameterSupported field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetAuthorizationResponseIssParameterSupported
+
+`func (o *OidcConfiguration) SetAuthorizationResponseIssParameterSupported(v bool)`
+
+SetAuthorizationResponseIssParameterSupported sets AuthorizationResponseIssParameterSupported field to given value.
+
+### HasAuthorizationResponseIssParameterSupported
+
+`func (o *OidcConfiguration) HasAuthorizationResponseIssParameterSupported() bool`
+
+HasAuthorizationResponseIssParameterSupported returns a boolean if a field has been set.
 
 ### GetBackchannelLogoutSessionSupported
 
@@ -201,56 +253,6 @@ SetCodeChallengeMethodsSupported sets CodeChallengeMethodsSupported field to giv
 
 HasCodeChallengeMethodsSupported returns a boolean if a field has been set.
 
-### GetCredentialsEndpointDraft00
-
-`func (o *OidcConfiguration) GetCredentialsEndpointDraft00() string`
-
-GetCredentialsEndpointDraft00 returns the CredentialsEndpointDraft00 field if non-nil, zero value otherwise.
-
-### GetCredentialsEndpointDraft00Ok
-
-`func (o *OidcConfiguration) GetCredentialsEndpointDraft00Ok() (*string, bool)`
-
-GetCredentialsEndpointDraft00Ok returns a tuple with the CredentialsEndpointDraft00 field if it's non-nil, zero value otherwise
-and a boolean to check if the value has been set.
-
-### SetCredentialsEndpointDraft00
-
-`func (o *OidcConfiguration) SetCredentialsEndpointDraft00(v string)`
-
-SetCredentialsEndpointDraft00 sets CredentialsEndpointDraft00 field to given value.
-
-### HasCredentialsEndpointDraft00
-
-`func (o *OidcConfiguration) HasCredentialsEndpointDraft00() bool`
-
-HasCredentialsEndpointDraft00 returns a boolean if a field has been set.
-
-### GetCredentialsSupportedDraft00
-
-`func (o *OidcConfiguration) GetCredentialsSupportedDraft00() []CredentialSupportedDraft00`
-
-GetCredentialsSupportedDraft00 returns the CredentialsSupportedDraft00 field if non-nil, zero value otherwise.
-
-### GetCredentialsSupportedDraft00Ok
-
-`func (o *OidcConfiguration) GetCredentialsSupportedDraft00Ok() (*[]CredentialSupportedDraft00, bool)`
-
-GetCredentialsSupportedDraft00Ok returns a tuple with the CredentialsSupportedDraft00 field if it's non-nil, zero value otherwise
-and a boolean to check if the value has been set.
-
-### SetCredentialsSupportedDraft00
-
-`func (o *OidcConfiguration) SetCredentialsSupportedDraft00(v []CredentialSupportedDraft00)`
-
-SetCredentialsSupportedDraft00 sets CredentialsSupportedDraft00 field to given value.
-
-### HasCredentialsSupportedDraft00
-
-`func (o *OidcConfiguration) HasCredentialsSupportedDraft00() bool`
-
-HasCredentialsSupportedDraft00 returns a boolean if a field has been set.
-
 ### GetDeviceAuthorizationEndpoint
 
 `func (o *OidcConfiguration) GetDeviceAuthorizationEndpoint() string`
@@ -270,6 +272,31 @@ and a boolean to check if the value has been set.
 
 SetDeviceAuthorizationEndpoint sets DeviceAuthorizationEndpoint field to given value.
 
+
+### GetDpopSigningAlgValuesSupported
+
+`func (o *OidcConfiguration) GetDpopSigningAlgValuesSupported() []string`
+
+GetDpopSigningAlgValuesSupported returns the DpopSigningAlgValuesSupported field if non-nil, zero value otherwise.
+
+### GetDpopSigningAlgValuesSupportedOk
+
+`func (o *OidcConfiguration) GetDpopSigningAlgValuesSupportedOk() (*[]string, bool)`
+
+GetDpopSigningAlgValuesSupportedOk returns a tuple with the DpopSigningAlgValuesSupported field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetDpopSigningAlgValuesSupported
+
+`func (o *OidcConfiguration) SetDpopSigningAlgValuesSupported(v []string)`
+
+SetDpopSigningAlgValuesSupported sets DpopSigningAlgValuesSupported field to given value.
+
+### HasDpopSigningAlgValuesSupported
+
+`func (o *OidcConfiguration) HasDpopSigningAlgValuesSupported() bool`
+
+HasDpopSigningAlgValuesSupported returns a boolean if a field has been set.
 
 ### GetEndSessionEndpoint
 
@@ -371,26 +398,6 @@ SetGrantTypesSupported sets GrantTypesSupported field to given value.
 
 HasGrantTypesSupported returns a boolean if a field has been set.
 
-### GetIdTokenSignedResponseAlg
-
-`func (o *OidcConfiguration) GetIdTokenSignedResponseAlg() []string`
-
-GetIdTokenSignedResponseAlg returns the IdTokenSignedResponseAlg field if non-nil, zero value otherwise.
-
-### GetIdTokenSignedResponseAlgOk
-
-`func (o *OidcConfiguration) GetIdTokenSignedResponseAlgOk() (*[]string, bool)`
-
-GetIdTokenSignedResponseAlgOk returns a tuple with the IdTokenSignedResponseAlg field if it's non-nil, zero value otherwise
-and a boolean to check if the value has been set.
-
-### SetIdTokenSignedResponseAlg
-
-`func (o *OidcConfiguration) SetIdTokenSignedResponseAlg(v []string)`
-
-SetIdTokenSignedResponseAlg sets IdTokenSignedResponseAlg field to given value.
-
-
 ### GetIdTokenSigningAlgValuesSupported
 
 `func (o *OidcConfiguration) GetIdTokenSigningAlgValuesSupported() []string`
@@ -450,6 +457,56 @@ and a boolean to check if the value has been set.
 
 SetJwksUri sets JwksUri field to given value.
 
+
+### GetPreAuthorizedGrantAnonymousAccessSupported
+
+`func (o *OidcConfiguration) GetPreAuthorizedGrantAnonymousAccessSupported() bool`
+
+GetPreAuthorizedGrantAnonymousAccessSupported returns the PreAuthorizedGrantAnonymousAccessSupported field if non-nil, zero value otherwise.
+
+### GetPreAuthorizedGrantAnonymousAccessSupportedOk
+
+`func (o *OidcConfiguration) GetPreAuthorizedGrantAnonymousAccessSupportedOk() (*bool, bool)`
+
+GetPreAuthorizedGrantAnonymousAccessSupportedOk returns a tuple with the PreAuthorizedGrantAnonymousAccessSupported field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetPreAuthorizedGrantAnonymousAccessSupported
+
+`func (o *OidcConfiguration) SetPreAuthorizedGrantAnonymousAccessSupported(v bool)`
+
+SetPreAuthorizedGrantAnonymousAccessSupported sets PreAuthorizedGrantAnonymousAccessSupported field to given value.
+
+### HasPreAuthorizedGrantAnonymousAccessSupported
+
+`func (o *OidcConfiguration) HasPreAuthorizedGrantAnonymousAccessSupported() bool`
+
+HasPreAuthorizedGrantAnonymousAccessSupported returns a boolean if a field has been set.
+
+### GetPushedAuthorizationRequestEndpoint
+
+`func (o *OidcConfiguration) GetPushedAuthorizationRequestEndpoint() string`
+
+GetPushedAuthorizationRequestEndpoint returns the PushedAuthorizationRequestEndpoint field if non-nil, zero value otherwise.
+
+### GetPushedAuthorizationRequestEndpointOk
+
+`func (o *OidcConfiguration) GetPushedAuthorizationRequestEndpointOk() (*string, bool)`
+
+GetPushedAuthorizationRequestEndpointOk returns a tuple with the PushedAuthorizationRequestEndpoint field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetPushedAuthorizationRequestEndpoint
+
+`func (o *OidcConfiguration) SetPushedAuthorizationRequestEndpoint(v string)`
+
+SetPushedAuthorizationRequestEndpoint sets PushedAuthorizationRequestEndpoint field to given value.
+
+### HasPushedAuthorizationRequestEndpoint
+
+`func (o *OidcConfiguration) HasPushedAuthorizationRequestEndpoint() bool`
+
+HasPushedAuthorizationRequestEndpoint returns a boolean if a field has been set.
 
 ### GetRegistrationEndpoint
 
@@ -550,6 +607,31 @@ SetRequestUriParameterSupported sets RequestUriParameterSupported field to given
 `func (o *OidcConfiguration) HasRequestUriParameterSupported() bool`
 
 HasRequestUriParameterSupported returns a boolean if a field has been set.
+
+### GetRequirePushedAuthorizationRequests
+
+`func (o *OidcConfiguration) GetRequirePushedAuthorizationRequests() bool`
+
+GetRequirePushedAuthorizationRequests returns the RequirePushedAuthorizationRequests field if non-nil, zero value otherwise.
+
+### GetRequirePushedAuthorizationRequestsOk
+
+`func (o *OidcConfiguration) GetRequirePushedAuthorizationRequestsOk() (*bool, bool)`
+
+GetRequirePushedAuthorizationRequestsOk returns a tuple with the RequirePushedAuthorizationRequests field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetRequirePushedAuthorizationRequests
+
+`func (o *OidcConfiguration) SetRequirePushedAuthorizationRequests(v bool)`
+
+SetRequirePushedAuthorizationRequests sets RequirePushedAuthorizationRequests field to given value.
+
+### HasRequirePushedAuthorizationRequests
+
+`func (o *OidcConfiguration) HasRequirePushedAuthorizationRequests() bool`
+
+HasRequirePushedAuthorizationRequests returns a boolean if a field has been set.
 
 ### GetRequireRequestUriRegistration
 
@@ -760,26 +842,6 @@ SetUserinfoEndpoint sets UserinfoEndpoint field to given value.
 `func (o *OidcConfiguration) HasUserinfoEndpoint() bool`
 
 HasUserinfoEndpoint returns a boolean if a field has been set.
-
-### GetUserinfoSignedResponseAlg
-
-`func (o *OidcConfiguration) GetUserinfoSignedResponseAlg() []string`
-
-GetUserinfoSignedResponseAlg returns the UserinfoSignedResponseAlg field if non-nil, zero value otherwise.
-
-### GetUserinfoSignedResponseAlgOk
-
-`func (o *OidcConfiguration) GetUserinfoSignedResponseAlgOk() (*[]string, bool)`
-
-GetUserinfoSignedResponseAlgOk returns a tuple with the UserinfoSignedResponseAlg field if it's non-nil, zero value otherwise
-and a boolean to check if the value has been set.
-
-### SetUserinfoSignedResponseAlg
-
-`func (o *OidcConfiguration) SetUserinfoSignedResponseAlg(v []string)`
-
-SetUserinfoSignedResponseAlg sets UserinfoSignedResponseAlg field to given value.
-
 
 ### GetUserinfoSigningAlgValuesSupported
 

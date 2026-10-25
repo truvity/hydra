@@ -1237,6 +1237,44 @@ paths:
       tags:
       - oAuth2
       x-ory-ratelimit-bucket: hydra-admin-high
+  /admin/oauth2/preauth:
+    post:
+      description: |-
+        Create a pre-authorized code for inclusion in a Credential Offer. The Credential Issuer
+        calls this endpoint to obtain a code that a Wallet can later exchange at the token endpoint
+        for an access token. The code is bound to the specified credential configuration IDs
+        (the authorization envelope) and optionally to a specific client_id.
+      operationId: createPreAuthorizedCode
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/createPreAuthorizedCodeBody"
+        required: true
+        x-originalParamName: Body
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/preAuthorizedCodeResponse"
+          description: preAuthorizedCodeResponse
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorOAuth2"
+          description: errorOAuth2
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorOAuth2"
+          description: errorOAuth2
+      summary: Create Pre-Authorized Code
+      tags:
+      - oAuth2
+      x-ory-ratelimit-bucket: hydra-admin-high
   /admin/oauth2/tokens:
     delete:
       description: This endpoint deletes OAuth2 access tokens issued to an OAuth 2.0
@@ -1574,6 +1612,27 @@ paths:
       tags:
       - oAuth2
       x-ory-ratelimit-bucket: hydra-admin-high
+  /oauth2/par:
+    post:
+      description: This endpoint handles Pushed Authorization Requests per RFC 9126.
+      operationId: oAuth2PushedAuthorize
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/pushAuthorizeResponse"
+          description: pushAuthorizeResponse
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorOAuth2"
+          description: errorOAuth2
+      summary: OAuth 2.0 Pushed Authorization Request (PAR)
+      tags:
+      - oAuth2
+      x-ory-ratelimit-bucket: hydra-public-medium
   /oauth2/register:
     post:
       description: |-
@@ -2026,6 +2085,9 @@ components:
       type: object
     acceptOAuth2ConsentRequest:
       properties:
+        authorization_details:
+          title: "JSONRawMessage represents a json.RawMessage that works well with\
+            \ JSON, SQL, and Swagger."
         context:
           title: "JSONRawMessage represents a json.RawMessage that works well with\
             \ JSON, SQL, and Swagger."
@@ -2170,51 +2232,66 @@ components:
       - kid
       - use
       type: object
-    credentialSupportedDraft00:
-      description: Includes information about the supported verifiable credentials.
-      example:
-        types:
-        - types
-        - types
-        cryptographic_suites_supported:
-        - cryptographic_suites_supported
-        - cryptographic_suites_supported
-        cryptographic_binding_methods_supported:
-        - cryptographic_binding_methods_supported
-        - cryptographic_binding_methods_supported
-        format: format
+    createPreAuthorizedCodeBody:
       properties:
-        cryptographic_binding_methods_supported:
+        client_id:
           description: |-
-            OpenID Connect Verifiable Credentials Cryptographic Binding Methods Supported
-
-            Contains a list of cryptographic binding methods supported for signing the proof.
-          items:
-            type: string
-          type: array
-        cryptographic_suites_supported:
-          description: |-
-            OpenID Connect Verifiable Credentials Cryptographic Suites Supported
-
-            Contains a list of cryptographic suites methods supported for signing the proof.
-          items:
-            type: string
-          type: array
-        format:
-          description: |-
-            OpenID Connect Verifiable Credentials Format
-
-            Contains the format that is supported by this authorization server.
+            The OAuth 2.0 client ID to bind the code to.
+            If omitted, any client (or anonymous if configured) can redeem the code.
+          example: wallet-app
           type: string
-        types:
+        credential_configuration_ids:
           description: |-
-            OpenID Connect Verifiable Credentials Types
-
-            Contains the types of verifiable credentials supported.
+            The credential configuration IDs the Credential Issuer plans to offer.
+            Defines the authorization envelope — the Wallet can request a subset
+            via authorization_details at the token endpoint.
+          example:
+          - UniversityDegree_JWT
+          - org.iso.18013.5.1.mDL
           items:
             type: string
           type: array
-      title: Verifiable Credentials Metadata (Draft 00)
+        scope:
+          description: |-
+            Space-separated scopes to grant. Include "offline" or "offline_access"
+            to enable refresh token issuance.
+          example: UniversityDegree_JWT offline
+          type: string
+        session_extra:
+          additionalProperties: {}
+          description: |-
+            Extra claims to embed in the pre-authorized code session.
+            These claims will be available via token introspection in the `ext` field
+            after the code is exchanged for an access token.
+            Use this to pass correlation identifiers (e.g., offer_id) from the
+            Credential Issuer to the token session.
+          example:
+            offer_id: 550e8400-e29b-41d4-a716-446655440000
+          type: object
+        tx_code:
+          description: |-
+            Transaction code in plaintext. The AS computes the SHA-256 hash before
+            storage. The plaintext is never stored.
+          example: "493536"
+          type: string
+        tx_code_input_mode:
+          description: |-
+            Input mode for the transaction code: "numeric" or "text".
+            Stored for metadata completeness (included in Credential Offer by the Issuer).
+          enum:
+          - numeric
+          - text
+          example: numeric
+          type: string
+        tx_code_length:
+          description: |-
+            Expected length of the transaction code.
+            Stored for metadata completeness.
+          example: 6
+          format: int64
+          type: integer
+      required:
+      - credential_configuration_ids
       type: object
     deviceAuthorization:
       description: "# Ory's OAuth 2.0 Device Authorization API"
@@ -3301,9 +3378,11 @@ components:
           - acr_values
           - acr_values
           display: display
+        issuer_state: issuer_state
         skip: true
         request_url: request_url
         acr: acr
+        authorization_details: ""
         context: ""
         challenge: challenge
         client:
@@ -3429,6 +3508,9 @@ components:
           title: "StringSliceJSONFormat represents []string{} which is encoded to/from\
             \ JSON for SQL storage."
           type: array
+        authorization_details:
+          title: "JSONRawMessage represents a json.RawMessage that works well with\
+            \ JSON, SQL, and Swagger."
         challenge:
           description: Challenge is used to retrieve/accept/deny the consent request.
           type: string
@@ -3440,6 +3522,8 @@ components:
         context:
           title: "JSONRawMessage represents a json.RawMessage that works well with\
             \ JSON, SQL, and Swagger."
+        issuer_state:
+          type: string
         login_challenge:
           description: |-
             LoginChallenge is the login challenge this consent challenge belongs to. It can be used to associate
@@ -3576,9 +3660,11 @@ components:
             - acr_values
             - acr_values
             display: display
+          issuer_state: issuer_state
           skip: true
           request_url: request_url
           acr: acr
+          authorization_details: ""
           context: ""
           challenge: challenge
           client:
@@ -4140,15 +4226,14 @@ components:
         among others.
       example:
         request_parameter_supported: true
+        pushed_authorization_request_endpoint: pushed_authorization_request_endpoint
+        authorization_response_iss_parameter_supported: true
         claims_parameter_supported: true
         backchannel_logout_supported: true
         scopes_supported:
         - scopes_supported
         - scopes_supported
         issuer: https://playground.ory.sh/ory-hydra/public/
-        userinfo_signed_response_alg:
-        - userinfo_signed_response_alg
-        - userinfo_signed_response_alg
         authorization_endpoint: https://playground.ory.sh/ory-hydra/public/oauth2/auth
         device_authorization_endpoint: https://playground.ory.sh/ory-hydra/public/oauth2/device/oauth
         claims_supported:
@@ -4157,6 +4242,8 @@ components:
         userinfo_signing_alg_values_supported:
         - userinfo_signing_alg_values_supported
         - userinfo_signing_alg_values_supported
+        pre-authorized_grant_anonymous_access_supported: true
+        require_pushed_authorization_requests: true
         token_endpoint_auth_methods_supported:
         - token_endpoint_auth_methods_supported
         - token_endpoint_auth_methods_supported
@@ -4164,17 +4251,20 @@ components:
         response_modes_supported:
         - response_modes_supported
         - response_modes_supported
-        id_token_signed_response_alg:
-        - id_token_signed_response_alg
-        - id_token_signed_response_alg
         token_endpoint: https://playground.ory.sh/ory-hydra/public/oauth2/token
         response_types_supported:
         - response_types_supported
         - response_types_supported
+        dpop_signing_alg_values_supported:
+        - dpop_signing_alg_values_supported
+        - dpop_signing_alg_values_supported
         request_uri_parameter_supported: true
         grant_types_supported:
         - grant_types_supported
         - grant_types_supported
+        authorization_details_types_supported:
+        - authorization_details_types_supported
+        - authorization_details_types_supported
         end_session_endpoint: end_session_endpoint
         revocation_endpoint: revocation_endpoint
         userinfo_endpoint: userinfo_endpoint
@@ -4183,30 +4273,8 @@ components:
         code_challenge_methods_supported:
         - code_challenge_methods_supported
         - code_challenge_methods_supported
-        credentials_endpoint_draft_00: credentials_endpoint_draft_00
         frontchannel_logout_session_supported: true
         jwks_uri: "https://{slug}.projects.oryapis.com/.well-known/jwks.json"
-        credentials_supported_draft_00:
-        - types:
-          - types
-          - types
-          cryptographic_suites_supported:
-          - cryptographic_suites_supported
-          - cryptographic_suites_supported
-          cryptographic_binding_methods_supported:
-          - cryptographic_binding_methods_supported
-          - cryptographic_binding_methods_supported
-          format: format
-        - types:
-          - types
-          - types
-          cryptographic_suites_supported:
-          - cryptographic_suites_supported
-          - cryptographic_suites_supported
-          cryptographic_binding_methods_supported:
-          - cryptographic_binding_methods_supported
-          - cryptographic_binding_methods_supported
-          format: format
         subject_types_supported:
         - subject_types_supported
         - subject_types_supported
@@ -4218,10 +4286,18 @@ components:
         - request_object_signing_alg_values_supported
         - request_object_signing_alg_values_supported
       properties:
+        authorization_details_types_supported:
+          description: OIDC4VCI extension
+          items:
+            type: string
+          type: array
         authorization_endpoint:
           description: OAuth 2.0 Authorization Endpoint URL
           example: https://playground.ory.sh/ory-hydra/public/oauth2/auth
           type: string
+        authorization_response_iss_parameter_supported:
+          description: RFC 9207 iss parameter support
+          type: boolean
         backchannel_logout_session_supported:
           description: |-
             OpenID Connect Back-Channel Logout Session Required
@@ -4259,24 +4335,15 @@ components:
           items:
             type: string
           type: array
-        credentials_endpoint_draft_00:
-          description: |-
-            OpenID Connect Verifiable Credentials Endpoint
-
-            Contains the URL of the Verifiable Credentials Endpoint.
-          type: string
-        credentials_supported_draft_00:
-          description: |-
-            OpenID Connect Verifiable Credentials Supported
-
-            JSON array containing a list of the Verifiable Credentials supported by this authorization server.
-          items:
-            $ref: "#/components/schemas/credentialSupportedDraft00"
-          type: array
         device_authorization_endpoint:
           description: OAuth 2.0 Device Authorization Endpoint URL
           example: https://playground.ory.sh/ory-hydra/public/oauth2/device/oauth
           type: string
+        dpop_signing_alg_values_supported:
+          description: DPoP signing algorithms (RFC 9449 §5)
+          items:
+            type: string
+          type: array
         end_session_endpoint:
           description: |-
             OpenID Connect End-Session Endpoint
@@ -4302,14 +4369,6 @@ components:
             OAuth 2.0 Supported Grant Types
 
             JSON array containing a list of the OAuth 2.0 Grant Type values that this OP supports.
-          items:
-            type: string
-          type: array
-        id_token_signed_response_alg:
-          description: |-
-            OpenID Connect Default ID Token Signing Algorithms
-
-            Algorithm used to sign OpenID Connect ID Tokens.
           items:
             type: string
           type: array
@@ -4344,6 +4403,12 @@ components:
             keys provided. When used, the bare key values MUST still be present and MUST match those in the certificate.
           example: "https://{slug}.projects.oryapis.com/.well-known/jwks.json"
           type: string
+        pre-authorized_grant_anonymous_access_supported:
+          description: Pre-Authorized Code anonymous access (OIDC4VCI §12.3)
+          type: boolean
+        pushed_authorization_request_endpoint:
+          description: PAR endpoint URL (RFC 9126 §5)
+          type: string
         registration_endpoint:
           description: OpenID Connect Dynamic Client Registration Endpoint URL
           example: https://playground.ory.sh/ory-hydra/admin/client
@@ -4370,6 +4435,9 @@ components:
             OpenID Connect Request URI Parameter Supported
 
             Boolean value specifying whether the OP supports use of the request_uri parameter, with true indicating support.
+          type: boolean
+        require_pushed_authorization_requests:
+          description: Whether PAR is required (RFC 9126 §5)
           type: boolean
         require_request_uri_registration:
           description: |-
@@ -4438,14 +4506,6 @@ components:
 
             URL of the OP's UserInfo Endpoint.
           type: string
-        userinfo_signed_response_alg:
-          description: |-
-            OpenID Connect User Userinfo Signing Algorithm
-
-            Algorithm used to sign OpenID Connect Userinfo Responses.
-          items:
-            type: string
-          type: array
         userinfo_signing_alg_values_supported:
           description: |-
             OpenID Connect Supported Userinfo Signing Algorithm
@@ -4457,14 +4517,12 @@ components:
       required:
       - authorization_endpoint
       - device_authorization_endpoint
-      - id_token_signed_response_alg
       - id_token_signing_alg_values_supported
       - issuer
       - jwks_uri
       - response_types_supported
       - subject_types_supported
       - token_endpoint
-      - userinfo_signed_response_alg
       title: OpenID Connect Discovery Metadata
       type: object
     oidcUserInfo:
@@ -4604,6 +4662,48 @@ components:
           description: "String from zoneinfo [zoneinfo] time zone database representing\
             \ the End-User's time zone. For example, Europe/Paris or America/Los_Angeles."
           type: string
+      type: object
+    preAuthorizedCodeResponse:
+      description: Pre-Authorized Code Response
+      example:
+        pre_authorized_code: oaKazRN8I0IbtZ0C7JuMn5.base64hmac
+        expires_at: 2026-04-16T15:30:00Z
+      properties:
+        expires_at:
+          description: RFC 3339 expiry timestamp for the pre-authorized code.
+          example: 2026-04-16T15:30:00Z
+          type: string
+        pre_authorized_code:
+          description: The raw opaque pre-authorized code for inclusion in the Credential
+            Offer.
+          example: oaKazRN8I0IbtZ0C7JuMn5.base64hmac
+          type: string
+      required:
+      - expires_at
+      - pre_authorized_code
+      type: object
+    pushAuthorizeResponse:
+      description: The response to a successful Pushed Authorization Request (RFC
+        9126 section 2.2).
+      example:
+        expires_in: 60
+        request_uri: urn:ietf:params:oauth:request_uri:6esc_11ACC5bwc014ltc14eY22c
+      properties:
+        expires_in:
+          description: The lifetime of the request URI in seconds.
+          example: 60
+          format: int64
+          type: integer
+        request_uri:
+          description: |-
+            The request URI corresponding to the authorization request posted. It is used as the
+            `request_uri` parameter at the authorization endpoint.
+          example: urn:ietf:params:oauth:request_uri:6esc_11ACC5bwc014ltc14eY22c
+          type: string
+      required:
+      - expires_in
+      - request_uri
+      title: OAuth 2.0 Pushed Authorization Response
       type: object
     rejectOAuth2Request:
       properties:

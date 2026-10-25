@@ -1306,6 +1306,26 @@ func (h *Handler) oauth2TokenExchange(w http.ResponseWriter, r *http.Request) {
 	h.r.OAuth2Provider().WriteAccessResponse(ctx, w, accessRequest, accessResponse)
 }
 
+// OAuth 2.0 Pushed Authorization Response
+//
+// The response to a successful Pushed Authorization Request (RFC 9126 section 2.2).
+//
+// swagger:model pushAuthorizeResponse
+type _ struct {
+	// The request URI corresponding to the authorization request posted. It is used as the
+	// `request_uri` parameter at the authorization endpoint.
+	//
+	// required: true
+	// example: urn:ietf:params:oauth:request_uri:6esc_11ACC5bwc014ltc14eY22c
+	RequestURI string `json:"request_uri"`
+
+	// The lifetime of the request URI in seconds.
+	//
+	// required: true
+	// example: 60
+	ExpiresIn int `json:"expires_in"`
+}
+
 // swagger:route POST /oauth2/par oAuth2 oAuth2PushedAuthorize
 //
 // # OAuth 2.0 Pushed Authorization Request (PAR)

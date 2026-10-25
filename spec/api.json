@@ -188,6 +188,9 @@
       },
       "acceptOAuth2ConsentRequest": {
         "properties": {
+          "authorization_details": {
+            "$ref": "#/components/schemas/JSONRawMessage"
+          },
           "context": {
             "$ref": "#/components/schemas/JSONRawMessage"
           },
@@ -292,36 +295,61 @@
         ],
         "type": "object"
       },
-      "credentialSupportedDraft00": {
-        "description": "Includes information about the supported verifiable credentials.",
+      "createPreAuthorizedCodeBody": {
         "properties": {
-          "cryptographic_binding_methods_supported": {
-            "description": "OpenID Connect Verifiable Credentials Cryptographic Binding Methods Supported\n\nContains a list of cryptographic binding methods supported for signing the proof.",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "cryptographic_suites_supported": {
-            "description": "OpenID Connect Verifiable Credentials Cryptographic Suites Supported\n\nContains a list of cryptographic suites methods supported for signing the proof.",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "format": {
-            "description": "OpenID Connect Verifiable Credentials Format\n\nContains the format that is supported by this authorization server.",
+          "client_id": {
+            "description": "The OAuth 2.0 client ID to bind the code to.\nIf omitted, any client (or anonymous if configured) can redeem the code.",
+            "example": "wallet-app",
             "type": "string"
           },
-          "types": {
-            "description": "OpenID Connect Verifiable Credentials Types\n\nContains the types of verifiable credentials supported.",
+          "credential_configuration_ids": {
+            "description": "The credential configuration IDs the Credential Issuer plans to offer.\nDefines the authorization envelope — the Wallet can request a subset\nvia authorization_details at the token endpoint.",
+            "example": [
+              "UniversityDegree_JWT",
+              "org.iso.18013.5.1.mDL"
+            ],
             "items": {
               "type": "string"
             },
             "type": "array"
+          },
+          "scope": {
+            "description": "Space-separated scopes to grant. Include \"offline\" or \"offline_access\"\nto enable refresh token issuance.",
+            "example": "UniversityDegree_JWT offline",
+            "type": "string"
+          },
+          "session_extra": {
+            "additionalProperties": {},
+            "description": "Extra claims to embed in the pre-authorized code session.\nThese claims will be available via token introspection in the `ext` field\nafter the code is exchanged for an access token.\nUse this to pass correlation identifiers (e.g., offer_id) from the\nCredential Issuer to the token session.",
+            "example": {
+              "offer_id": "550e8400-e29b-41d4-a716-446655440000"
+            },
+            "type": "object"
+          },
+          "tx_code": {
+            "description": "Transaction code in plaintext. The AS computes the SHA-256 hash before\nstorage. The plaintext is never stored.",
+            "example": "493536",
+            "type": "string"
+          },
+          "tx_code_input_mode": {
+            "description": "Input mode for the transaction code: \"numeric\" or \"text\".\nStored for metadata completeness (included in Credential Offer by the Issuer).",
+            "enum": [
+              "numeric",
+              "text"
+            ],
+            "example": "numeric",
+            "type": "string"
+          },
+          "tx_code_length": {
+            "description": "Expected length of the transaction code.\nStored for metadata completeness.",
+            "example": 6,
+            "format": "int64",
+            "type": "integer"
           }
         },
-        "title": "Verifiable Credentials Metadata (Draft 00)",
+        "required": [
+          "credential_configuration_ids"
+        ],
         "type": "object"
       },
       "deviceAuthorization": {
@@ -960,6 +988,9 @@
           "amr": {
             "$ref": "#/components/schemas/StringSliceJSONFormat"
           },
+          "authorization_details": {
+            "$ref": "#/components/schemas/JSONRawMessage"
+          },
           "challenge": {
             "description": "Challenge is used to retrieve/accept/deny the consent request.",
             "type": "string"
@@ -973,6 +1004,9 @@
           },
           "context": {
             "$ref": "#/components/schemas/JSONRawMessage"
+          },
+          "issuer_state": {
+            "type": "string"
           },
           "login_challenge": {
             "description": "LoginChallenge is the login challenge this consent challenge belongs to. It can be used to associate\na login and consent request in the login \u0026 consent app.",
@@ -1216,10 +1250,21 @@
       "oidcConfiguration": {
         "description": "Includes links to several endpoints (for example `/oauth2/token`) and exposes information on supported signature algorithms\namong others.",
         "properties": {
+          "authorization_details_types_supported": {
+            "description": "OIDC4VCI extension",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "authorization_endpoint": {
             "description": "OAuth 2.0 Authorization Endpoint URL",
             "example": "https://playground.ory.sh/ory-hydra/public/oauth2/auth",
             "type": "string"
+          },
+          "authorization_response_iss_parameter_supported": {
+            "description": "RFC 9207 iss parameter support",
+            "type": "boolean"
           },
           "backchannel_logout_session_supported": {
             "description": "OpenID Connect Back-Channel Logout Session Required\n\nBoolean value specifying whether the OP can pass a sid (session ID) Claim in the Logout Token to identify the RP\nsession with the OP. If supported, the sid Claim is also included in ID Tokens issued by the OP",
@@ -1247,21 +1292,17 @@
             },
             "type": "array"
           },
-          "credentials_endpoint_draft_00": {
-            "description": "OpenID Connect Verifiable Credentials Endpoint\n\nContains the URL of the Verifiable Credentials Endpoint.",
-            "type": "string"
-          },
-          "credentials_supported_draft_00": {
-            "description": "OpenID Connect Verifiable Credentials Supported\n\nJSON array containing a list of the Verifiable Credentials supported by this authorization server.",
-            "items": {
-              "$ref": "#/components/schemas/credentialSupportedDraft00"
-            },
-            "type": "array"
-          },
           "device_authorization_endpoint": {
             "description": "OAuth 2.0 Device Authorization Endpoint URL",
             "example": "https://playground.ory.sh/ory-hydra/public/oauth2/device/oauth",
             "type": "string"
+          },
+          "dpop_signing_alg_values_supported": {
+            "description": "DPoP signing algorithms (RFC 9449 §5)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "end_session_endpoint": {
             "description": "OpenID Connect End-Session Endpoint\n\nURL at the OP to which an RP can perform a redirect to request that the End-User be logged out at the OP.",
@@ -1277,13 +1318,6 @@
           },
           "grant_types_supported": {
             "description": "OAuth 2.0 Supported Grant Types\n\nJSON array containing a list of the OAuth 2.0 Grant Type values that this OP supports.",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "id_token_signed_response_alg": {
-            "description": "OpenID Connect Default ID Token Signing Algorithms\n\nAlgorithm used to sign OpenID Connect ID Tokens.",
             "items": {
               "type": "string"
             },
@@ -1306,6 +1340,14 @@
             "example": "https://{slug}.projects.oryapis.com/.well-known/jwks.json",
             "type": "string"
           },
+          "pre-authorized_grant_anonymous_access_supported": {
+            "description": "Pre-Authorized Code anonymous access (OIDC4VCI §12.3)",
+            "type": "boolean"
+          },
+          "pushed_authorization_request_endpoint": {
+            "description": "PAR endpoint URL (RFC 9126 §5)",
+            "type": "string"
+          },
           "registration_endpoint": {
             "description": "OpenID Connect Dynamic Client Registration Endpoint URL",
             "example": "https://playground.ory.sh/ory-hydra/admin/client",
@@ -1324,6 +1366,10 @@
           },
           "request_uri_parameter_supported": {
             "description": "OpenID Connect Request URI Parameter Supported\n\nBoolean value specifying whether the OP supports use of the request_uri parameter, with true indicating support.",
+            "type": "boolean"
+          },
+          "require_pushed_authorization_requests": {
+            "description": "Whether PAR is required (RFC 9126 §5)",
             "type": "boolean"
           },
           "require_request_uri_registration": {
@@ -1378,13 +1424,6 @@
             "description": "OpenID Connect Userinfo URL\n\nURL of the OP's UserInfo Endpoint.",
             "type": "string"
           },
-          "userinfo_signed_response_alg": {
-            "description": "OpenID Connect User Userinfo Signing Algorithm\n\nAlgorithm used to sign OpenID Connect Userinfo Responses.",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
           "userinfo_signing_alg_values_supported": {
             "description": "OpenID Connect Supported Userinfo Signing Algorithm\n\nJSON array containing a list of the JWS [JWS] signing algorithms (alg values) [JWA] supported by the UserInfo Endpoint to encode the Claims in a JWT [JWT].",
             "items": {
@@ -1401,9 +1440,7 @@
           "jwks_uri",
           "subject_types_supported",
           "response_types_supported",
-          "id_token_signing_alg_values_supported",
-          "id_token_signed_response_alg",
-          "userinfo_signed_response_alg"
+          "id_token_signing_alg_values_supported"
         ],
         "title": "OpenID Connect Discovery Metadata",
         "type": "object"
@@ -1489,6 +1526,48 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "preAuthorizedCodeResponse": {
+        "description": "Pre-Authorized Code Response",
+        "properties": {
+          "expires_at": {
+            "description": "RFC 3339 expiry timestamp for the pre-authorized code.",
+            "example": "2026-04-16T15:30:00Z",
+            "type": "string"
+          },
+          "pre_authorized_code": {
+            "description": "The raw opaque pre-authorized code for inclusion in the Credential Offer.",
+            "example": "oaKazRN8I0IbtZ0C7JuMn5.base64hmac",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pre_authorized_code",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "pushAuthorizeResponse": {
+        "description": "The response to a successful Pushed Authorization Request (RFC 9126 section 2.2).",
+        "properties": {
+          "expires_in": {
+            "description": "The lifetime of the request URI in seconds.",
+            "example": 60,
+            "format": "int64",
+            "type": "integer"
+          },
+          "request_uri": {
+            "description": "The request URI corresponding to the authorization request posted. It is used as the\n`request_uri` parameter at the authorization endpoint.",
+            "example": "urn:ietf:params:oauth:request_uri:6esc_11ACC5bwc014ltc14eY22c",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_uri",
+          "expires_in"
+        ],
+        "title": "OAuth 2.0 Pushed Authorization Response",
         "type": "object"
       },
       "rejectOAuth2Request": {
@@ -3293,6 +3372,60 @@
         "x-ory-ratelimit-bucket": "hydra-admin-high"
       }
     },
+    "/admin/oauth2/preauth": {
+      "post": {
+        "description": "Create a pre-authorized code for inclusion in a Credential Offer. The Credential Issuer\ncalls this endpoint to obtain a code that a Wallet can later exchange at the token endpoint\nfor an access token. The code is bound to the specified credential configuration IDs\n(the authorization envelope) and optionally to a specific client_id.",
+        "operationId": "createPreAuthorizedCode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/createPreAuthorizedCodeBody"
+              }
+            }
+          },
+          "required": true,
+          "x-originalParamName": "Body"
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/preAuthorizedCodeResponse"
+                }
+              }
+            },
+            "description": "preAuthorizedCodeResponse"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errorOAuth2"
+                }
+              }
+            },
+            "description": "errorOAuth2"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errorOAuth2"
+                }
+              }
+            },
+            "description": "errorOAuth2"
+          }
+        },
+        "summary": "Create Pre-Authorized Code",
+        "tags": [
+          "oAuth2"
+        ],
+        "x-ory-ratelimit-bucket": "hydra-admin-high"
+      }
+    },
     "/admin/oauth2/tokens": {
       "delete": {
         "description": "This endpoint deletes OAuth2 access tokens issued to an OAuth 2.0 Client from the database.",
@@ -3728,6 +3861,39 @@
           "oAuth2"
         ],
         "x-ory-ratelimit-bucket": "hydra-admin-high"
+      }
+    },
+    "/oauth2/par": {
+      "post": {
+        "description": "This endpoint handles Pushed Authorization Requests per RFC 9126.",
+        "operationId": "oAuth2PushedAuthorize",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/pushAuthorizeResponse"
+                }
+              }
+            },
+            "description": "pushAuthorizeResponse"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errorOAuth2"
+                }
+              }
+            },
+            "description": "errorOAuth2"
+          }
+        },
+        "summary": "OAuth 2.0 Pushed Authorization Request (PAR)",
+        "tags": [
+          "oAuth2"
+        ],
+        "x-ory-ratelimit-bucket": "hydra-public-medium"
       }
     },
     "/oauth2/register": {

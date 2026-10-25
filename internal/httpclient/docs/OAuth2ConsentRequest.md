@@ -6,10 +6,12 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **Acr** | Pointer to **string** | ACR represents the Authentication AuthorizationContext Class Reference value for this authentication session. You can use it to express that, for example, a user authenticated using two factor authentication. | [optional] 
 **Amr** | Pointer to **[]string** |  | [optional] 
+**AuthorizationDetails** | Pointer to **interface{}** |  | [optional] 
 **Challenge** | **string** | Challenge is used to retrieve/accept/deny the consent request. | 
 **Client** | Pointer to [**OAuth2Client**](OAuth2Client.md) |  | [optional] 
 **ConsentRequestId** | Pointer to **string** | ConsentRequestID is the ID of the consent request. | [optional] 
 **Context** | Pointer to **interface{}** |  | [optional] 
+**IssuerState** | Pointer to **string** |  | [optional] 
 **LoginChallenge** | Pointer to **string** | LoginChallenge is the login challenge this consent challenge belongs to. It can be used to associate a login and consent request in the login &amp; consent app. | [optional] 
 **LoginSessionId** | Pointer to **string** | LoginSessionID is the login session ID. If the user-agent reuses a login session (via cookie / remember flag) this ID will remain the same. If the user-agent did not have an existing authentication session (e.g. remember is false) this will be a new random value. This value is used as the \&quot;sid\&quot; parameter in the ID Token and in OIDC Front-/Back- channel logout. It&#39;s value can generally be used to associate consecutive login requests by a certain user. | [optional] 
 **OidcContext** | Pointer to [**OAuth2ConsentRequestOpenIDConnectContext**](OAuth2ConsentRequestOpenIDConnectContext.md) |  | [optional] 
@@ -88,6 +90,41 @@ SetAmr sets Amr field to given value.
 
 HasAmr returns a boolean if a field has been set.
 
+### GetAuthorizationDetails
+
+`func (o *OAuth2ConsentRequest) GetAuthorizationDetails() interface{}`
+
+GetAuthorizationDetails returns the AuthorizationDetails field if non-nil, zero value otherwise.
+
+### GetAuthorizationDetailsOk
+
+`func (o *OAuth2ConsentRequest) GetAuthorizationDetailsOk() (*interface{}, bool)`
+
+GetAuthorizationDetailsOk returns a tuple with the AuthorizationDetails field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetAuthorizationDetails
+
+`func (o *OAuth2ConsentRequest) SetAuthorizationDetails(v interface{})`
+
+SetAuthorizationDetails sets AuthorizationDetails field to given value.
+
+### HasAuthorizationDetails
+
+`func (o *OAuth2ConsentRequest) HasAuthorizationDetails() bool`
+
+HasAuthorizationDetails returns a boolean if a field has been set.
+
+### SetAuthorizationDetailsNil
+
+`func (o *OAuth2ConsentRequest) SetAuthorizationDetailsNil(b bool)`
+
+ SetAuthorizationDetailsNil sets the value for AuthorizationDetails to be an explicit nil
+
+### UnsetAuthorizationDetails
+`func (o *OAuth2ConsentRequest) UnsetAuthorizationDetails()`
+
+UnsetAuthorizationDetails ensures that no value is present for AuthorizationDetails, not even an explicit nil
 ### GetChallenge
 
 `func (o *OAuth2ConsentRequest) GetChallenge() string`
@@ -193,6 +230,31 @@ HasContext returns a boolean if a field has been set.
 `func (o *OAuth2ConsentRequest) UnsetContext()`
 
 UnsetContext ensures that no value is present for Context, not even an explicit nil
+### GetIssuerState
+
+`func (o *OAuth2ConsentRequest) GetIssuerState() string`
+
+GetIssuerState returns the IssuerState field if non-nil, zero value otherwise.
+
+### GetIssuerStateOk
+
+`func (o *OAuth2ConsentRequest) GetIssuerStateOk() (*string, bool)`
+
+GetIssuerStateOk returns a tuple with the IssuerState field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetIssuerState
+
+`func (o *OAuth2ConsentRequest) SetIssuerState(v string)`
+
+SetIssuerState sets IssuerState field to given value.
+
+### HasIssuerState
+
+`func (o *OAuth2ConsentRequest) HasIssuerState() bool`
+
+HasIssuerState returns a boolean if a field has been set.
+
 ### GetLoginChallenge
 
 `func (o *OAuth2ConsentRequest) GetLoginChallenge() string`
