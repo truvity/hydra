@@ -159,6 +159,7 @@ func addRoutine(out io.Writer, p persistence.Persister, names ...string) []clean
 		case OnlyTokens:
 			routines = append(routines, cleanup(out, p.FlushInactiveAccessTokens, "access tokens"))
 			routines = append(routines, cleanup(out, p.FlushInactiveRefreshTokens, "refresh tokens"))
+			routines = append(routines, cleanup(out, p.FlushInactivePARSessions, "PAR sessions")) // OIDC4VCI extension
 		case OnlyRequests:
 			routines = append(routines, cleanup(out, p.FlushInactiveLoginConsentRequests, "login-consent requests"))
 		case OnlyGrants:
