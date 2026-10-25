@@ -9,6 +9,7 @@ Method | HTTP request | Description
 [**AcceptOAuth2LogoutRequest**](OAuth2API.md#AcceptOAuth2LogoutRequest) | **Put** /admin/oauth2/auth/requests/logout/accept | Accept OAuth 2.0 Session Logout Request
 [**AcceptUserCodeRequest**](OAuth2API.md#AcceptUserCodeRequest) | **Put** /admin/oauth2/auth/requests/device/accept | Accepts a device grant user_code request
 [**CreateOAuth2Client**](OAuth2API.md#CreateOAuth2Client) | **Post** /admin/clients | Create OAuth 2.0 Client
+[**CreatePreAuthorizedCode**](OAuth2API.md#CreatePreAuthorizedCode) | **Post** /admin/oauth2/preauth | Create Pre-Authorized Code
 [**DeleteOAuth2Client**](OAuth2API.md#DeleteOAuth2Client) | **Delete** /admin/clients/{id} | Delete OAuth 2.0 Client
 [**DeleteOAuth2Token**](OAuth2API.md#DeleteOAuth2Token) | **Delete** /admin/oauth2/tokens | Delete OAuth 2.0 Access Tokens from specific OAuth 2.0 Client
 [**DeleteTrustedOAuth2JwtGrantIssuer**](OAuth2API.md#DeleteTrustedOAuth2JwtGrantIssuer) | **Delete** /admin/trust/grants/jwt-bearer/issuers/{id} | Delete Trusted OAuth2 JWT Bearer Grant Type Issuer
@@ -23,6 +24,7 @@ Method | HTTP request | Description
 [**ListTrustedOAuth2JwtGrantIssuers**](OAuth2API.md#ListTrustedOAuth2JwtGrantIssuers) | **Get** /admin/trust/grants/jwt-bearer/issuers | List Trusted OAuth2 JWT Bearer Grant Type Issuers
 [**OAuth2Authorize**](OAuth2API.md#OAuth2Authorize) | **Get** /oauth2/auth | OAuth 2.0 Authorize Endpoint
 [**OAuth2DeviceFlow**](OAuth2API.md#OAuth2DeviceFlow) | **Post** /oauth2/device/auth | The OAuth 2.0 Device Authorize Endpoint
+[**OAuth2PushedAuthorize**](OAuth2API.md#OAuth2PushedAuthorize) | **Post** /oauth2/par | OAuth 2.0 Pushed Authorization Request (PAR)
 [**Oauth2TokenExchange**](OAuth2API.md#Oauth2TokenExchange) | **Post** /oauth2/token | The OAuth 2.0 Token Endpoint
 [**PatchOAuth2Client**](OAuth2API.md#PatchOAuth2Client) | **Patch** /admin/clients/{id} | Patch OAuth 2.0 Client
 [**PerformOAuth2DeviceVerificationFlow**](OAuth2API.md#PerformOAuth2DeviceVerificationFlow) | **Get** /oauth2/device/verify | OAuth 2.0 Device Verification Endpoint
@@ -359,6 +361,72 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**OAuth2Client**](OAuth2Client.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## CreatePreAuthorizedCode
+
+> PreAuthorizedCodeResponse CreatePreAuthorizedCode(ctx).CreatePreAuthorizedCodeBody(createPreAuthorizedCodeBody).Execute()
+
+Create Pre-Authorized Code
+
+
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	openapiclient "github.com/ory/hydra-client-go/v2"
+)
+
+func main() {
+	createPreAuthorizedCodeBody := *openapiclient.NewCreatePreAuthorizedCodeBody([]string{"CredentialConfigurationIds_example"}) // CreatePreAuthorizedCodeBody | 
+
+	configuration := openapiclient.NewConfiguration()
+	apiClient := openapiclient.NewAPIClient(configuration)
+	resp, r, err := apiClient.OAuth2API.CreatePreAuthorizedCode(context.Background()).CreatePreAuthorizedCodeBody(createPreAuthorizedCodeBody).Execute()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error when calling `OAuth2API.CreatePreAuthorizedCode``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+	}
+	// response from `CreatePreAuthorizedCode`: PreAuthorizedCodeResponse
+	fmt.Fprintf(os.Stdout, "Response from `OAuth2API.CreatePreAuthorizedCode`: %v\n", resp)
+}
+```
+
+### Path Parameters
+
+
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiCreatePreAuthorizedCodeRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **createPreAuthorizedCodeBody** | [**CreatePreAuthorizedCodeBody**](CreatePreAuthorizedCodeBody.md) |  | 
+
+### Return type
+
+[**PreAuthorizedCodeResponse**](PreAuthorizedCodeResponse.md)
 
 ### Authorization
 
@@ -1301,6 +1369,67 @@ Other parameters are passed through a pointer to a apiOAuth2DeviceFlowRequest st
 ### Return type
 
 [**DeviceAuthorization**](DeviceAuthorization.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## OAuth2PushedAuthorize
+
+> PushAuthorizeResponse OAuth2PushedAuthorize(ctx).Execute()
+
+OAuth 2.0 Pushed Authorization Request (PAR)
+
+
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	openapiclient "github.com/ory/hydra-client-go/v2"
+)
+
+func main() {
+
+	configuration := openapiclient.NewConfiguration()
+	apiClient := openapiclient.NewAPIClient(configuration)
+	resp, r, err := apiClient.OAuth2API.OAuth2PushedAuthorize(context.Background()).Execute()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error when calling `OAuth2API.OAuth2PushedAuthorize``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+	}
+	// response from `OAuth2PushedAuthorize`: PushAuthorizeResponse
+	fmt.Fprintf(os.Stdout, "Response from `OAuth2API.OAuth2PushedAuthorize`: %v\n", resp)
+}
+```
+
+### Path Parameters
+
+This endpoint does not need any parameter.
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiOAuth2PushedAuthorizeRequest struct via the builder pattern
+
+
+### Return type
+
+[**PushAuthorizeResponse**](PushAuthorizeResponse.md)
 
 ### Authorization
 

@@ -4,6 +4,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+**AuthorizationDetails** | Pointer to **interface{}** |  | [optional] 
 **Context** | Pointer to **interface{}** |  | [optional] 
 **GrantAccessTokenAudience** | Pointer to **[]string** |  | [optional] 
 **GrantScope** | Pointer to **[]string** |  | [optional] 
@@ -30,6 +31,41 @@ NewAcceptOAuth2ConsentRequestWithDefaults instantiates a new AcceptOAuth2Consent
 This constructor will only assign default values to properties that have it defined,
 but it doesn't guarantee that properties required by API are set
 
+### GetAuthorizationDetails
+
+`func (o *AcceptOAuth2ConsentRequest) GetAuthorizationDetails() interface{}`
+
+GetAuthorizationDetails returns the AuthorizationDetails field if non-nil, zero value otherwise.
+
+### GetAuthorizationDetailsOk
+
+`func (o *AcceptOAuth2ConsentRequest) GetAuthorizationDetailsOk() (*interface{}, bool)`
+
+GetAuthorizationDetailsOk returns a tuple with the AuthorizationDetails field if it's non-nil, zero value otherwise
+and a boolean to check if the value has been set.
+
+### SetAuthorizationDetails
+
+`func (o *AcceptOAuth2ConsentRequest) SetAuthorizationDetails(v interface{})`
+
+SetAuthorizationDetails sets AuthorizationDetails field to given value.
+
+### HasAuthorizationDetails
+
+`func (o *AcceptOAuth2ConsentRequest) HasAuthorizationDetails() bool`
+
+HasAuthorizationDetails returns a boolean if a field has been set.
+
+### SetAuthorizationDetailsNil
+
+`func (o *AcceptOAuth2ConsentRequest) SetAuthorizationDetailsNil(b bool)`
+
+ SetAuthorizationDetailsNil sets the value for AuthorizationDetails to be an explicit nil
+
+### UnsetAuthorizationDetails
+`func (o *AcceptOAuth2ConsentRequest) UnsetAuthorizationDetails()`
+
+UnsetAuthorizationDetails ensures that no value is present for AuthorizationDetails, not even an explicit nil
 ### GetContext
 
 `func (o *AcceptOAuth2ConsentRequest) GetContext() interface{}`

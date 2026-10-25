@@ -20,6 +20,7 @@ var _ MappedNullable = &AcceptOAuth2ConsentRequest{}
 
 // AcceptOAuth2ConsentRequest struct for AcceptOAuth2ConsentRequest
 type AcceptOAuth2ConsentRequest struct {
+	AuthorizationDetails     interface{} `json:"authorization_details,omitempty"`
 	Context                  interface{} `json:"context,omitempty"`
 	GrantAccessTokenAudience []string    `json:"grant_access_token_audience,omitempty"`
 	GrantScope               []string    `json:"grant_scope,omitempty"`
@@ -45,6 +46,39 @@ func NewAcceptOAuth2ConsentRequest() *AcceptOAuth2ConsentRequest {
 func NewAcceptOAuth2ConsentRequestWithDefaults() *AcceptOAuth2ConsentRequest {
 	this := AcceptOAuth2ConsentRequest{}
 	return &this
+}
+
+// GetAuthorizationDetails returns the AuthorizationDetails field value if set, zero value otherwise (both if not set or set to explicit null).
+func (o *AcceptOAuth2ConsentRequest) GetAuthorizationDetails() interface{} {
+	if o == nil {
+		var ret interface{}
+		return ret
+	}
+	return o.AuthorizationDetails
+}
+
+// GetAuthorizationDetailsOk returns a tuple with the AuthorizationDetails field value if set, nil otherwise
+// and a boolean to check if the value has been set.
+// NOTE: If the value is an explicit nil, `nil, true` will be returned
+func (o *AcceptOAuth2ConsentRequest) GetAuthorizationDetailsOk() (*interface{}, bool) {
+	if o == nil || IsNil(o.AuthorizationDetails) {
+		return nil, false
+	}
+	return &o.AuthorizationDetails, true
+}
+
+// HasAuthorizationDetails returns a boolean if a field has been set.
+func (o *AcceptOAuth2ConsentRequest) HasAuthorizationDetails() bool {
+	if o != nil && !IsNil(o.AuthorizationDetails) {
+		return true
+	}
+
+	return false
+}
+
+// SetAuthorizationDetails gets a reference to the given interface{} and assigns it to the AuthorizationDetails field.
+func (o *AcceptOAuth2ConsentRequest) SetAuthorizationDetails(v interface{}) {
+	o.AuthorizationDetails = v
 }
 
 // GetContext returns the Context field value if set, zero value otherwise (both if not set or set to explicit null).
@@ -250,6 +284,9 @@ func (o AcceptOAuth2ConsentRequest) MarshalJSON() ([]byte, error) {
 
 func (o AcceptOAuth2ConsentRequest) ToMap() (map[string]interface{}, error) {
 	toSerialize := map[string]interface{}{}
+	if o.AuthorizationDetails != nil {
+		toSerialize["authorization_details"] = o.AuthorizationDetails
+	}
 	if o.Context != nil {
 		toSerialize["context"] = o.Context
 	}

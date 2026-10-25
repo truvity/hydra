@@ -358,9 +358,19 @@ func TestHandlerWellKnown(t *testing.T) {
 		require.NoError(t, err)
 		defer res.Body.Close() //nolint:errcheck
 
+		body, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+
 		var wellKnownResp map[string]interface{}
-		err = json.NewDecoder(res.Body).Decode(&wellKnownResp)
+		err = json.Unmarshal(body, &wellKnownResp)
 		require.NoError(t, err, "problem decoding wellknown json response: %+v", err)
+
+		// The generated SDK must be able to parse what the server serves: its required
+		// fields have to be a subset of the fields the discovery handler emits.
+		var sdkResp hydra.OidcConfiguration
+		require.NoError(t, json.Unmarshal(body, &sdkResp), "generated client cannot parse the discovery document")
+		assert.NotContains(t, wellKnownResp, "id_token_signed_response_alg")
+		assert.NotContains(t, wellKnownResp, "userinfo_signed_response_alg")
 
 		snapshotOpts := []snapshotx.Opt{}
 		if reg.Config().HSMEnabled() {
@@ -401,9 +411,19 @@ func TestHandlerOauthAuthorizationServer(t *testing.T) {
 		require.NoError(t, err)
 		defer res.Body.Close() //nolint:errcheck
 
+		body, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+
 		var wellKnownResp map[string]interface{}
-		err = json.NewDecoder(res.Body).Decode(&wellKnownResp)
+		err = json.Unmarshal(body, &wellKnownResp)
 		require.NoError(t, err, "problem decoding wellknown json response: %+v", err)
+
+		// The generated SDK must be able to parse what the server serves: its required
+		// fields have to be a subset of the fields the discovery handler emits.
+		var sdkResp hydra.OidcConfiguration
+		require.NoError(t, json.Unmarshal(body, &sdkResp), "generated client cannot parse the discovery document")
+		assert.NotContains(t, wellKnownResp, "id_token_signed_response_alg")
+		assert.NotContains(t, wellKnownResp, "userinfo_signed_response_alg")
 		snapshotOpts := []snapshotx.Opt{}
 		if reg.Config().HSMEnabled() {
 			// The signing algorithm is not stable in the HSM tests, because the key is kept
