@@ -404,7 +404,7 @@ defined in this specification.
 
 `+----------+    +-----------+        +----------------------+   +-------------------+`  
 `| End-User |    |   Wallet  |        | Authorization Server |   | Credential Issuer |`  
-`+----------+    +-----------+        +----------------------+   +-------------------+`  
+`+----------+    +-----------+        +----------------------+   +-------------------+`
 
 `|               |                           |                        |`  
  `| (1a) End-User |                           |                        |`  
@@ -547,7 +547,7 @@ this specification.
 
 `+----------+   +-----------+           +----------------------+   +-------------------+`  
 `| End-User |   |   Wallet  |           | Authorization Server |   | Credential Issuer |`  
-`+----------+   +-----------+           +----------------------+   +-------------------+`  
+`+----------+   +-----------+           +----------------------+   +-------------------+`
 
 `|              |                              |                       |`  
  `|              |  (1) End-User provides       |                       |`  
@@ -781,13 +781,13 @@ Below is a non-normative example of a Credential Offer passed by value (with
 line breaks within values for display purposes only):
 
 `GET /credential_offer?`  
- `credential_offer=%7B%22credential_issuer%22:%22https://credential-issuer.exam`  
+ `credential_offer=%7B%22credential_issuer%22:%22https://credential-issuer.exam`
 
-`ple.com%22,%22credential_configuration_ids%22:%5B%22UniversityDegree_JWT%22,%`  
+`ple.com%22,%22credential_configuration_ids%22:%5B%22UniversityDegree_JWT%22,%`
 
-`22org.iso.18013.5.1.mDL%22%5D,%22grants%22:%7B%22urn:ietf:params:oauth:grant-`  
+`22org.iso.18013.5.1.mDL%22%5D,%22grants%22:%7B%22urn:ietf:params:oauth:grant-`
 
-`type:pre-authorized_code%22:%7B%22pre-authorized_code%22:%22oaKazRN8I0IbtZ0C7`  
+`type:pre-authorized_code%22:%7B%22pre-authorized_code%22:%22oaKazRN8I0IbtZ0C7`
 
 `JuMn5%22,%22tx_code%22:%7B%7D%7D%7D%7D`
 
@@ -796,15 +796,15 @@ included in a QR code or a link used to invoke a Wallet deployed as a native app
 (with line breaks within values for display purposes only):
 
 `openid-credential-offer://?`  
- `credential_offer=%7B%22credential_issuer%22:%22https://credential-issuer.exam`  
+ `credential_offer=%7B%22credential_issuer%22:%22https://credential-issuer.exam`
 
-`ple.com%22,%22credential_configuration_ids%22:%5B%22org.iso.18013.5.1.mDL%22%`  
+`ple.com%22,%22credential_configuration_ids%22:%5B%22org.iso.18013.5.1.mDL%22%`
 
-`5D,%22grants%22:%7B%22urn:ietf:params:oauth:grant-type:pre-authorized_code%22`  
+`5D,%22grants%22:%7B%22urn:ietf:params:oauth:grant-type:pre-authorized_code%22`
 
-`:%7B%22pre-authorized_code%22:%22oaKazRN8I0IbtZ0C7JuMn5%22,%22tx_code%22:%7B%`  
+`:%7B%22pre-authorized_code%22:%22oaKazRN8I0IbtZ0C7JuMn5%22,%22tx_code%22:%7B%`
 
-`22input_mode%22:%22text%22,%22description%22:%22Please%20enter%20the%20serial`  
+`22input_mode%22:%22text%22,%22description%22:%22Please%20enter%20the%20serial`
 
 `%20number%20of%20your%20physical%20drivers%20license%22%7D%7D%7D%7D`
 
@@ -834,7 +834,7 @@ the Credential Offer by reference due to the size limitations of the QR codes.
 Below is a non-normative example:
 
 `openid-credential-offer://?`  
- `credential_offer_uri=https%3A%2F%2Fserver%2Eexample%2Ecom%2Fcredential-offer`  
+ `credential_offer_uri=https%3A%2F%2Fserver%2Eexample%2Ecom%2Fcredential-offer`
 
 `%2FGkurKxf5T0Y-mnPFCHqWOMiZi4VS138cQO_V7PZHAdM`
 
@@ -988,7 +988,7 @@ Authorization Server in response to an HTTP 302 redirect response by the Wallet
  `&client_id=s6BhdRkqt3`  
  `&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM`  
  `&code_challenge_method=S256`  
- `&authorization_details=%5B%7B%22type%22%3A%20%22openid_credential%22%2C%20%22`  
+ `&authorization_details=%5B%7B%22type%22%3A%20%22openid_credential%22%2C%20%22`
 
 `credential_configuration_id%22%3A%20%22UniversityDegreeCredential%22%7D%5D`  
  `&redirect_uri=https%3A%2F%2Fwallet.example.org%2Fcb`
@@ -1124,7 +1124,7 @@ Below is a non-normative example of a response to a successful request:
 `Cache-Control: no-cache, no-store`
 
 `{`  
- `"request_uri": "urn:ietf:params:oauth:request_uri:6esc_11ACC5bwc014ltc14eY22c",`  
+ `"request_uri": "urn:ietf:params:oauth:request_uri:6esc_11ACC5bwc014ltc14eY22c",`
 
 `"expires_in": 60`  
 `}`
@@ -5512,9 +5512,9 @@ format with optional parameters present:
  `],`  
  `"credential_endpoint": "https://credential-issuer.example.com/credential",`  
  `"nonce_endpoint": "https://credential-issuer.example.com/nonce",`  
- `"deferred_credential_endpoint": "https://credential-issuer.example.com/deferred_credential",`  
+ `"deferred_credential_endpoint": "https://credential-issuer.example.com/deferred_credential",`
 
-`"notification_endpoint": "https://credential-issuer.example.com/notification",`  
+`"notification_endpoint": "https://credential-issuer.example.com/notification",`
 
 `"credential_request_encryption": {`  
  `"jwks": [`  
