@@ -103,14 +103,14 @@ type CachedCredentialConfig struct {
 // CachedAuthorizationRequest is the form payload of the PAR request together
 // with the request_uri Hydra returned. Re-used across runs when still valid.
 type CachedAuthorizationRequest struct {
-	ClientID       string    `json:"client_id"`
-	Form           map[string][]string `json:"form"`
-	RequestURI     string    `json:"request_uri"`
-	ExpiresIn      int       `json:"expires_in"`
-	CreatedAt      time.Time `json:"created_at"`
-	CodeVerifier   string    `json:"code_verifier"`
-	CodeChallenge  string    `json:"code_challenge"`
-	State          string    `json:"state"`
+	ClientID      string              `json:"client_id"`
+	Form          map[string][]string `json:"form"`
+	RequestURI    string              `json:"request_uri"`
+	ExpiresIn     int                 `json:"expires_in"`
+	CreatedAt     time.Time           `json:"created_at"`
+	CodeVerifier  string              `json:"code_verifier"`
+	CodeChallenge string              `json:"code_challenge"`
+	State         string              `json:"state"`
 }
 
 // ── key & JWK helpers ─────────────────────────────────────────────────────────
@@ -367,7 +367,8 @@ func saveAuthorizationRequest(t *testing.T, name string, req *CachedAuthorizatio
 // for use with token_endpoint_auth_method=private_key_jwt.
 //
 // claims: iss = sub = clientID, aud = full token endpoint URL, jti = random,
-//         iat = now, exp = now + 60s.
+//
+//	iat = now, exp = now + 60s.
 func signClientAssertion(t *testing.T, c *CachedClient, tokenEndpointURL string) string {
 	t.Helper()
 	jwk := parsePrivateJWK(t, c.PrivateKeyJWK)

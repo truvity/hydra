@@ -197,19 +197,19 @@ type mockClient struct {
 	tokenEndpointAuthMethod string
 }
 
-func (m *mockClient) GetID() string                            { return m.id }
-func (m *mockClient) GetHashedSecret() []byte                  { return nil }
-func (m *mockClient) GetRedirectURIs() []string                { return nil }
-func (m *mockClient) GetGrantTypes() fosite.Arguments          { return nil }
-func (m *mockClient) GetResponseTypes() fosite.Arguments       { return nil }
-func (m *mockClient) GetScopes() fosite.Arguments              { return nil }
-func (m *mockClient) IsPublic() bool                           { return true }
-func (m *mockClient) GetAudience() fosite.Arguments            { return nil }
-func (m *mockClient) GetRequestURIs() []string                 { return nil }
-func (m *mockClient) GetJSONWebKeys() *jose.JSONWebKeySet      { return nil }
-func (m *mockClient) GetJSONWebKeysURI() string                { return "" }
-func (m *mockClient) GetRequestObjectSigningAlgorithm() string { return "" }
-func (m *mockClient) GetTokenEndpointAuthMethod() string       { return m.tokenEndpointAuthMethod }
+func (m *mockClient) GetID() string                                { return m.id }
+func (m *mockClient) GetHashedSecret() []byte                      { return nil }
+func (m *mockClient) GetRedirectURIs() []string                    { return nil }
+func (m *mockClient) GetGrantTypes() fosite.Arguments              { return nil }
+func (m *mockClient) GetResponseTypes() fosite.Arguments           { return nil }
+func (m *mockClient) GetScopes() fosite.Arguments                  { return nil }
+func (m *mockClient) IsPublic() bool                               { return true }
+func (m *mockClient) GetAudience() fosite.Arguments                { return nil }
+func (m *mockClient) GetRequestURIs() []string                     { return nil }
+func (m *mockClient) GetJSONWebKeys() *jose.JSONWebKeySet          { return nil }
+func (m *mockClient) GetJSONWebKeysURI() string                    { return "" }
+func (m *mockClient) GetRequestObjectSigningAlgorithm() string     { return "" }
+func (m *mockClient) GetTokenEndpointAuthMethod() string           { return m.tokenEndpointAuthMethod }
 func (m *mockClient) GetTokenEndpointAuthSigningAlgorithm() string { return "" }
 
 func buildTestRequest(attestation, pop string, form url.Values) *http.Request {
@@ -304,7 +304,6 @@ func makeValidPoPClaims() map[string]interface{} {
 		"jti": uuid.New().String(),
 	}
 }
-
 
 // =========================================================================
 // Property 1: End-to-end Wallet Attestation Authentication
@@ -508,7 +507,6 @@ func TestProperty2_X509CertificateChainValidation(t *testing.T) {
 	})
 }
 
-
 // =========================================================================
 // Property 3: Signature Verification Binds Attestation to Wallet Provider and PoP to Client Instance
 // Feature: oidc4vci-wallet-attestation, Property 3: Signature Verification Binds Attestation to Wallet Provider and PoP to Client Instance
@@ -708,7 +706,6 @@ func TestProperty4_CrossJWTClaimConsistency(t *testing.T) {
 	})
 }
 
-
 // =========================================================================
 // Property 5: Temporal Claim Validation
 // Feature: oidc4vci-wallet-attestation, Property 5: Temporal Claim Validation
@@ -895,7 +892,6 @@ func TestProperty6_PoPJTIReplayDetection(t *testing.T) {
 	})
 }
 
-
 // =========================================================================
 // Property 9: Public Key Only in cnf Claim
 // Feature: oidc4vci-wallet-attestation, Property 9: Public Key Only in cnf Claim
@@ -1048,7 +1044,6 @@ func TestProperty11_UnknownClaimsTolerance(t *testing.T) {
 	})
 }
 
-
 // =========================================================================
 // Property 7: Strategy Routing — Header Presence Determines Authentication Path
 // Feature: oidc4vci-wallet-attestation, Property 7: Strategy Routing — Header Presence Determines Authentication Path
@@ -1164,7 +1159,6 @@ func TestProperty7_StrategyRoutingHeaderPresence(t *testing.T) {
 	})
 }
 
-
 // =========================================================================
 // Property 8: Refresh Token Binding Round-Trip
 // Feature: oidc4vci-wallet-attestation, Property 8: Refresh Token Binding Round-Trip
@@ -1185,34 +1179,34 @@ func (m *mockAccessRequester) GetSession() fosite.Session      { return m.sessio
 func (m *mockAccessRequester) SetSession(s fosite.Session)     { m.session = s }
 
 // Stub the remaining Requester interface methods.
-func (m *mockAccessRequester) SetID(_ string)                                   {}
-func (m *mockAccessRequester) GetID() string                                    { return "" }
-func (m *mockAccessRequester) GetRequestedAt() time.Time                        { return time.Time{} }
-func (m *mockAccessRequester) GetRequestedScopes() fosite.Arguments             { return nil }
-func (m *mockAccessRequester) GetRequestedAudience() fosite.Arguments           { return nil }
-func (m *mockAccessRequester) SetRequestedScopes(_ fosite.Arguments)            {}
-func (m *mockAccessRequester) SetRequestedAudience(_ fosite.Arguments)          {}
-func (m *mockAccessRequester) AppendRequestedScope(_ string)                    {}
-func (m *mockAccessRequester) GetGrantedScopes() fosite.Arguments               { return nil }
-func (m *mockAccessRequester) GetGrantedAudience() fosite.Arguments             { return nil }
-func (m *mockAccessRequester) GrantScope(_ string)                              {}
-func (m *mockAccessRequester) GrantAudience(_ string)                           {}
-func (m *mockAccessRequester) GetRequestForm() url.Values                       { return m.form }
-func (m *mockAccessRequester) Merge(_ fosite.Requester)                         {}
-func (m *mockAccessRequester) Sanitize(_ []string) fosite.Requester             { return m }
+func (m *mockAccessRequester) SetID(_ string)                          {}
+func (m *mockAccessRequester) GetID() string                           { return "" }
+func (m *mockAccessRequester) GetRequestedAt() time.Time               { return time.Time{} }
+func (m *mockAccessRequester) GetRequestedScopes() fosite.Arguments    { return nil }
+func (m *mockAccessRequester) GetRequestedAudience() fosite.Arguments  { return nil }
+func (m *mockAccessRequester) SetRequestedScopes(_ fosite.Arguments)   {}
+func (m *mockAccessRequester) SetRequestedAudience(_ fosite.Arguments) {}
+func (m *mockAccessRequester) AppendRequestedScope(_ string)           {}
+func (m *mockAccessRequester) GetGrantedScopes() fosite.Arguments      { return nil }
+func (m *mockAccessRequester) GetGrantedAudience() fosite.Arguments    { return nil }
+func (m *mockAccessRequester) GrantScope(_ string)                     {}
+func (m *mockAccessRequester) GrantAudience(_ string)                  {}
+func (m *mockAccessRequester) GetRequestForm() url.Values              { return m.form }
+func (m *mockAccessRequester) Merge(_ fosite.Requester)                {}
+func (m *mockAccessRequester) Sanitize(_ []string) fosite.Requester    { return m }
 
 // mockAccessResponder implements fosite.AccessResponder for testing.
 type mockAccessResponder struct{}
 
-func (m *mockAccessResponder) SetExtra(_ string, _ interface{})  {}
-func (m *mockAccessResponder) GetExtra(_ string) interface{}     { return nil }
-func (m *mockAccessResponder) SetExpiresIn(_ time.Duration)      {}
-func (m *mockAccessResponder) SetScopes(_ fosite.Arguments)      {}
-func (m *mockAccessResponder) SetAccessToken(_ string)           {}
-func (m *mockAccessResponder) SetTokenType(_ string)             {}
-func (m *mockAccessResponder) GetAccessToken() string            { return "" }
-func (m *mockAccessResponder) GetTokenType() string              { return "" }
-func (m *mockAccessResponder) ToMap() map[string]interface{}     { return nil }
+func (m *mockAccessResponder) SetExtra(_ string, _ interface{}) {}
+func (m *mockAccessResponder) GetExtra(_ string) interface{}    { return nil }
+func (m *mockAccessResponder) SetExpiresIn(_ time.Duration)     {}
+func (m *mockAccessResponder) SetScopes(_ fosite.Arguments)     {}
+func (m *mockAccessResponder) SetAccessToken(_ string)          {}
+func (m *mockAccessResponder) SetTokenType(_ string)            {}
+func (m *mockAccessResponder) GetAccessToken() string           { return "" }
+func (m *mockAccessResponder) GetTokenType() string             { return "" }
+func (m *mockAccessResponder) ToMap() map[string]interface{}    { return nil }
 
 func TestProperty8_RefreshTokenBindingRoundTrip(t *testing.T) {
 	t.Parallel()

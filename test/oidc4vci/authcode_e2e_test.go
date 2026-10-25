@@ -168,9 +168,9 @@ func consentHandlerWithRAR(t *testing.T, adminURL string) http.HandlerFunc {
 
 		// Accept consent — grant all requested scopes.
 		acceptBody, _ := json.Marshal(map[string]interface{}{
-			"grant_scope":                grantScope,
+			"grant_scope":                 grantScope,
 			"grant_access_token_audience": consentReq["requested_access_token_audience"],
-			"remember":                   false,
+			"remember":                    false,
 			"session": map[string]interface{}{
 				"access_token": map[string]interface{}{},
 				"id_token":     map[string]interface{}{},
@@ -246,11 +246,11 @@ func TestAuthCodeFlow_PAR_RAR_DPoP(t *testing.T) {
 	// ── Step 1: PAR request ───────────────────────────────────────────────────
 	parForm := url.Values{
 		"client_id":             {c.GetID()},
-		"response_type":        {"code"},
-		"redirect_uri":         {callbackTS.URL + "/callback"},
-		"scope":                {"openid offline"},
-		"state":                {state},
-		"code_challenge":       {codeChallenge},
+		"response_type":         {"code"},
+		"redirect_uri":          {callbackTS.URL + "/callback"},
+		"scope":                 {"openid offline"},
+		"state":                 {state},
+		"code_challenge":        {codeChallenge},
 		"code_challenge_method": {"S256"},
 		"authorization_details": {authDetails},
 	}

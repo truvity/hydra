@@ -25,8 +25,10 @@ type mockRARScopeConfig struct {
 	typesSupported []string
 }
 
-func (m *mockRARScopeConfig) GetRAREnabled(_ context.Context) bool        { return true }
-func (m *mockRARScopeConfig) GetRARTypesSupported(_ context.Context) []string { return m.typesSupported }
+func (m *mockRARScopeConfig) GetRAREnabled(_ context.Context) bool { return true }
+func (m *mockRARScopeConfig) GetRARTypesSupported(_ context.Context) []string {
+	return m.typesSupported
+}
 
 // --- rapid generators ---
 

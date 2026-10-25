@@ -35,7 +35,7 @@ func newOIDCError(code string, httpStatus int, description string) *OIDC4VCIErro
 
 // Sentinel errors used by the store.
 var (
-	errNotFound     = newOIDCError("not_found", 404, "the requested resource was not found")
+	errNotFound      = newOIDCError("not_found", 404, "the requested resource was not found")
 	errAlreadyExists = newOIDCError("already_exists", 409, "the resource already exists")
 )
 
@@ -54,18 +54,18 @@ const defaultNonceTTL = 300
 
 // CredentialConfiguration describes a credential type the issuer can issue.
 type CredentialConfiguration struct {
-	ID                                  string                `json:"id"`
-	Format                              string                `json:"format"`
-	Scope                               string                `json:"scope,omitempty"`
-	CryptographicBindingMethodsSupported []string             `json:"cryptographic_binding_methods_supported,omitempty"`
-	CredentialSigningAlgValuesSupported  []string             `json:"credential_signing_alg_values_supported,omitempty"`
-	ProofTypesSupported                 map[string]*ProofType `json:"proof_types_supported,omitempty"`
-	Display                             []CredentialDisplay   `json:"display,omitempty"`
-	VCT                                 string                `json:"vct,omitempty"`
-	Doctype                             string                `json:"doctype,omitempty"`
-	CredentialDefinition                *CredentialDefinition `json:"credential_definition,omitempty"`
-	CreatedAt                           time.Time             `json:"-"`
-	UpdatedAt                           time.Time             `json:"-"`
+	ID                                   string                `json:"id"`
+	Format                               string                `json:"format"`
+	Scope                                string                `json:"scope,omitempty"`
+	CryptographicBindingMethodsSupported []string              `json:"cryptographic_binding_methods_supported,omitempty"`
+	CredentialSigningAlgValuesSupported  []string              `json:"credential_signing_alg_values_supported,omitempty"`
+	ProofTypesSupported                  map[string]*ProofType `json:"proof_types_supported,omitempty"`
+	Display                              []CredentialDisplay   `json:"display,omitempty"`
+	VCT                                  string                `json:"vct,omitempty"`
+	Doctype                              string                `json:"doctype,omitempty"`
+	CredentialDefinition                 *CredentialDefinition `json:"credential_definition,omitempty"`
+	CreatedAt                            time.Time             `json:"-"`
+	UpdatedAt                            time.Time             `json:"-"`
 }
 
 // ProofType describes proof signing algorithm support.
