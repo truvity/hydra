@@ -405,10 +405,15 @@ func TestAuthCodeWithDefaultStrategy(t *testing.T) {
 					reg.Config().Delete(ctx, config.KeyAccessTokenLifespan)
 				})
 
-				// Make sure we test against all crypto suites that we advertise.
-				cfg, _, err := publicClient.OidcAPI.DiscoverOidcConfiguration(ctx).Execute()
-				require.NoError(t, err)
-				supportedCryptoSuites := cfg.CredentialsSupportedDraft00[0].CryptographicSuitesSupported
+				// Make sure we test against all crypto suites that the credentials endpoint
+				// accepts. The draft-00 metadata that used to advertise them
+				// (credentials_supported_draft_00) is no longer part of the discovery document.
+				supportedCryptoSuites := []string{
+					"PS256", "RS256", "ES256",
+					"PS384", "RS384", "ES384",
+					"PS512", "RS512", "ES512",
+					"EdDSA",
+				}
 
 				run := func(t *testing.T, strategy string) {
 					_, conf := newOAuth2Client(

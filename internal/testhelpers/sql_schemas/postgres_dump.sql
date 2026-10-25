@@ -1,4 +1,4 @@
--- migrations hash: 36ad8390f65c43551e28df0dcf92b0fdeb823b774eecda791f5979deafce2f6cc6ff57fccdfa41cbaa4403fd4ced8a9dfd7b725d1bb51fd6b0fabdccd51338aa
+-- migrations hash: 3094a1c6901bee8340cfe00e35ffb0db84d9dc6c212dc3338e4bb3ccc23f603a6d86387445a3fb5abed295494c13fa27d28ad4aaf61df68191d1600a89e4c7df
 
 
 
@@ -192,6 +192,15 @@ CREATE TABLE public.hydra_oauth2_device_auth_codes (
 
 ALTER TABLE public.hydra_oauth2_device_auth_codes OWNER TO postgres;
 
+CREATE TABLE public.hydra_oauth2_dpop_jti (
+    jti character varying(255) NOT NULL,
+    nid uuid NOT NULL,
+    used_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    expires_at timestamp without time zone NOT NULL
+);
+
+ALTER TABLE public.hydra_oauth2_dpop_jti OWNER TO postgres;
+
 CREATE TABLE public.hydra_oauth2_flow (
     login_challenge character varying(40) NOT NULL,
     login_verifier character varying(40),
@@ -243,7 +252,10 @@ CREATE TABLE public.hydra_oauth2_flow (
 CASE
     WHEN (consent_remember_for > 0) THEN (requested_at + ((consent_remember_for)::double precision * '00:00:01'::interval))
     ELSE NULL::timestamp without time zone
-END) STORED
+END) STORED,
+    authorization_details jsonb,
+    issuer_state character varying(4096) DEFAULT ''::character varying,
+    consent_authorization_details jsonb
 );
 
 ALTER TABLE public.hydra_oauth2_flow OWNER TO postgres;
@@ -304,6 +316,26 @@ CREATE TABLE public.hydra_oauth2_oidc (
 
 ALTER TABLE public.hydra_oauth2_oidc OWNER TO postgres;
 
+CREATE TABLE public.hydra_oauth2_par (
+    signature character varying(255) NOT NULL,
+    request_id character varying(40) NOT NULL,
+    requested_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    client_id character varying(255) NOT NULL,
+    scope text NOT NULL,
+    granted_scope text NOT NULL,
+    form_data text NOT NULL,
+    session_data text NOT NULL,
+    subject character varying(255) DEFAULT ''::character varying NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    requested_audience text DEFAULT ''::text,
+    granted_audience text DEFAULT ''::text,
+    challenge_id character varying(40),
+    nid character(36) NOT NULL,
+    expires_at timestamp without time zone
+);
+
+ALTER TABLE public.hydra_oauth2_par OWNER TO postgres;
+
 CREATE TABLE public.hydra_oauth2_pkce (
     signature character varying(255) NOT NULL,
     request_id character varying(40) NOT NULL,
@@ -323,6 +355,25 @@ CREATE TABLE public.hydra_oauth2_pkce (
 );
 
 ALTER TABLE public.hydra_oauth2_pkce OWNER TO postgres;
+
+CREATE TABLE public.hydra_oauth2_preauth_code (
+    signature character varying(255) NOT NULL,
+    nid uuid NOT NULL,
+    request_id character varying(255) NOT NULL,
+    client_id character varying(255),
+    requested_scope json,
+    granted_scope json,
+    credential_configuration_ids json NOT NULL,
+    tx_code_hash character varying(255),
+    tx_code_input_mode character varying(10),
+    tx_code_length integer,
+    session_data json NOT NULL,
+    redeemed boolean DEFAULT false NOT NULL,
+    requested_at timestamp without time zone NOT NULL,
+    expires_at timestamp without time zone NOT NULL
+);
+
+ALTER TABLE public.hydra_oauth2_preauth_code OWNER TO postgres;
 
 CREATE TABLE public.hydra_oauth2_refresh (
     signature character varying(255) NOT NULL,
@@ -399,6 +450,9 @@ ALTER TABLE ONLY public.hydra_oauth2_code
 ALTER TABLE ONLY public.hydra_oauth2_device_auth_codes
     ADD CONSTRAINT hydra_oauth2_device_auth_codes_pkey PRIMARY KEY (device_code_signature, nid);
 
+ALTER TABLE ONLY public.hydra_oauth2_dpop_jti
+    ADD CONSTRAINT hydra_oauth2_dpop_jti_pkey PRIMARY KEY (jti, nid);
+
 ALTER TABLE ONLY public.hydra_oauth2_flow
     ADD CONSTRAINT hydra_oauth2_flow_pkey PRIMARY KEY (login_challenge);
 
@@ -414,8 +468,14 @@ ALTER TABLE ONLY public.hydra_oauth2_obfuscated_authentication_session
 ALTER TABLE ONLY public.hydra_oauth2_oidc
     ADD CONSTRAINT hydra_oauth2_oidc_pkey PRIMARY KEY (signature);
 
+ALTER TABLE ONLY public.hydra_oauth2_par
+    ADD CONSTRAINT hydra_oauth2_par_pkey PRIMARY KEY (signature);
+
 ALTER TABLE ONLY public.hydra_oauth2_pkce
     ADD CONSTRAINT hydra_oauth2_pkce_pkey PRIMARY KEY (signature);
+
+ALTER TABLE ONLY public.hydra_oauth2_preauth_code
+    ADD CONSTRAINT hydra_oauth2_preauth_code_pkey PRIMARY KEY (signature);
 
 ALTER TABLE ONLY public.hydra_oauth2_refresh
     ADD CONSTRAINT hydra_oauth2_refresh_pkey PRIMARY KEY (signature);
@@ -502,6 +562,16 @@ CREATE INDEX hydra_oauth2_trusted_jwt_bearer_issuer_expires_at_idx ON public.hyd
 CREATE INDEX hydra_oauth2_trusted_jwt_bearer_issuer_nid_idx ON public.hydra_oauth2_trusted_jwt_bearer_issuer USING btree (id, nid);
 
 CREATE UNIQUE INDEX hydra_oauth2_trusted_jwt_bearer_issuer_nid_uq_idx ON public.hydra_oauth2_trusted_jwt_bearer_issuer USING btree (nid, key_id, issuer, subject);
+
+CREATE INDEX idx_dpop_jti_expires_at ON public.hydra_oauth2_dpop_jti USING btree (nid, expires_at);
+
+CREATE INDEX idx_par_expires_at ON public.hydra_oauth2_par USING btree (nid, expires_at);
+
+CREATE INDEX idx_par_nid ON public.hydra_oauth2_par USING btree (nid);
+
+CREATE INDEX idx_preauth_code_expires_at ON public.hydra_oauth2_preauth_code USING btree (nid, expires_at);
+
+CREATE INDEX idx_preauth_code_nid ON public.hydra_oauth2_preauth_code USING btree (nid);
 
 CREATE UNIQUE INDEX schema_migration_version_idx ON public.schema_migration USING btree (version);
 
