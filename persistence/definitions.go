@@ -5,6 +5,7 @@ package persistence
 
 import (
 	"context"
+	"time"
 
 	"github.com/ory/hydra/v2/client"
 	"github.com/ory/hydra/v2/consent"
@@ -28,6 +29,9 @@ type (
 		dpop.DPoPNonceStorage
 		preauth.PreAuthorizedCodeStorage // OIDC4VCI extension
 		fosite.PARStorage                // PAR session persistence
+
+		// FlushInactivePARSessions deletes expired PAR sessions. OIDC4VCI extension.
+		FlushInactivePARSessions(ctx context.Context, notAfter time.Time, limit int, batchSize int) error
 
 		Connection(context.Context) *pop.Connection
 		Transaction(context.Context, func(ctx context.Context, c *pop.Connection) error) error

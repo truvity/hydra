@@ -5,8 +5,12 @@ package sql
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"strings"
+	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/ory/hydra/v2/fosite"
 	"github.com/ory/hydra/v2/oauth2"
@@ -28,6 +32,14 @@ func (p *Persister) GetPARSession(ctx context.Context, requestURI string) (reque
 	req, err := p.findSessionBySignature(ctx, requestURI, &oauth2.Session{}, sqlTablePAR)
 	if err != nil {
 		return nil, err
+	}
+
+	// RFC 9126 section 2.2: a request_uri is only valid for the lifetime that was
+	// returned as expires_in. The expiry is written by the PAR handler into the
+	// session and denormalized into expires_at. A session without an expiry was not
+	// written by the PAR handler, so it is treated as expired as well.
+	if exp := req.GetSession().GetExpiresAt(fosite.PushedAuthorizeRequestContext); exp.IsZero() || !exp.After(time.Now().UTC()) {
+		return nil, errors.WithStack(fosite.ErrNotFound.WithDebug("The PAR session has expired."))
 	}
 
 	r, ok := req.(*fosite.Request)
@@ -66,15 +78,42 @@ func (p *Persister) DeletePARSession(ctx context.Context, _ string) (err error) 
 	return nil
 }
 
-// FlushExpiredPARSessions deletes PAR sessions that have expired.
-// This should be called periodically as part of the janitor/cleanup process.
-func (p *Persister) FlushExpiredPARSessions(ctx context.Context) (err error) {
-	ctx, span := p.r.Tracer(ctx).Tracer().Start(ctx, "persistence.sql.FlushExpiredPARSessions")
+// FlushInactivePARSessions deletes PAR sessions that expired before notAfter, in
+// batches of batchSize and at most limit rows per run. notAfter is capped at the
+// current time: a session that has not expired yet is never deleted.
+//
+// It is called by the janitor (hydra janitor --tokens), because PAR sessions are
+// otherwise never deleted: DeletePARSession is a no-op by design.
+func (p *Persister) FlushInactivePARSessions(ctx context.Context, notAfter time.Time, limit int, batchSize int) (err error) {
+	ctx, span := p.r.Tracer(ctx).Tracer().Start(ctx, "persistence.sql.FlushInactivePARSessions")
 	defer otelx.End(span, &err)
 
-	_, err = p.Connection(ctx).RawQuery(
-		"DELETE FROM hydra_oauth2_par WHERE expires_at < CURRENT_TIMESTAMP AND nid = ?",
-		p.NetworkID(ctx),
-	).ExecWithCount()
+	if now := time.Now(); now.Before(notAfter) {
+		notAfter = now
+	}
+
+	table := OAuth2RequestSQL{Table: sqlTablePAR}.TableName()
+	totalDeletedCount := 0
+	for deletedRecords := batchSize; totalDeletedCount < limit && deletedRecords == batchSize; {
+		d := batchSize
+		if limit-totalDeletedCount < batchSize {
+			d = limit - totalDeletedCount
+		}
+		// The outer SELECT is necessary because MySQL does not support LIMIT in an IN subquery.
+		/* #nosec G201 table is static */
+		deletedRecords, err = p.Connection(ctx).RawQuery(
+			fmt.Sprintf(`DELETE FROM %s WHERE signature IN (
+				SELECT signature FROM (SELECT signature FROM %s WHERE expires_at < ? AND nid = ? ORDER BY expires_at LIMIT %d) AS s
+			) AND nid = ?`, table, table, d),
+			notAfter.UTC(),
+			p.NetworkID(ctx),
+			p.NetworkID(ctx),
+		).ExecWithCount()
+		totalDeletedCount += deletedRecords
+		if err != nil {
+			break
+		}
+		p.l.Debugf("Flushing PAR sessions...: %d/%d", totalDeletedCount, limit)
+	}
 	return sqlcon.HandleError(err)
 }
