@@ -122,11 +122,11 @@ func createClient(t *testing.T, redirectURI string, grantTypes []string) (client
 	t.Helper()
 	secret := "test-secret-" + uuid.New()
 	result := adminPost(t, "/admin/clients", map[string]interface{}{
-		"client_secret":  secret,
-		"redirect_uris":  []string{redirectURI},
-		"grant_types":    grantTypes,
-		"response_types": []string{"code"},
-		"scope":          "openid offline",
+		"client_secret":              secret,
+		"redirect_uris":              []string{redirectURI},
+		"grant_types":                grantTypes,
+		"response_types":             []string{"code"},
+		"scope":                      "openid offline",
 		"token_endpoint_auth_method": "client_secret_basic",
 	})
 	id, ok := result["client_id"].(string)
@@ -421,11 +421,11 @@ func TestExternal_PAR_DPoP_ConsentViaAdminAPI(t *testing.T) {
 
 	parForm := url.Values{
 		"client_id":             {clientID},
-		"response_type":        {"code"},
-		"redirect_uri":         {"http://127.0.0.1:9999/callback"},
-		"scope":                {"openid offline"},
-		"state":                {state},
-		"code_challenge":       {codeChallenge},
+		"response_type":         {"code"},
+		"redirect_uri":          {"http://127.0.0.1:9999/callback"},
+		"scope":                 {"openid offline"},
+		"state":                 {state},
+		"code_challenge":        {codeChallenge},
 		"code_challenge_method": {"S256"},
 	}
 
@@ -480,8 +480,8 @@ func TestExternal_PAR_DPoP_ConsentViaAdminAPI(t *testing.T) {
 	loginAcceptResp := adminPut(t,
 		"/admin/oauth2/auth/requests/login/accept?login_challenge="+url.QueryEscape(loginChallenge),
 		map[string]interface{}{
-			"subject":     "test-user",
-			"remember":    false,
+			"subject":  "test-user",
+			"remember": false,
 		})
 	loginRedirectTo, ok := loginAcceptResp["redirect_to"].(string)
 	require.True(t, ok, "redirect_to missing from login accept: %v", loginAcceptResp)
@@ -509,9 +509,9 @@ func TestExternal_PAR_DPoP_ConsentViaAdminAPI(t *testing.T) {
 	consentAcceptResp := adminPut(t,
 		"/admin/oauth2/auth/requests/consent/accept?consent_challenge="+url.QueryEscape(consentChallenge),
 		map[string]interface{}{
-			"grant_scope":                []string{"openid", "offline"},
+			"grant_scope":                 []string{"openid", "offline"},
 			"grant_access_token_audience": []string{},
-			"remember":                   false,
+			"remember":                    false,
 			"session": map[string]interface{}{
 				"access_token": map[string]interface{}{},
 				"id_token":     map[string]interface{}{},

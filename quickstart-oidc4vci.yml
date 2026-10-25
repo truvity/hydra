@@ -50,7 +50,9 @@ services:
 
   hydra-migrate:
     image: oryd/hydra:${HYDRA_IMAGE_TAG:-local}
-    command: migrate -c /etc/config/hydra/hydra-local-oidc4vci-config.yml sql up -e --yes
+    command:
+      migrate -c /etc/config/hydra/hydra-local-oidc4vci-config.yml sql up -e
+      --yes
     environment:
       - DSN=postgres://hydra:secret@postgresd:5432/hydra?sslmode=disable&max_conns=20&max_idle_conns=4
     volumes:
@@ -69,7 +71,8 @@ services:
     ports:
       - "4444:4444" # Public port
       - "4445:4445" # Admin port
-    command: serve -c /etc/config/hydra/hydra-local-oidc4vci-config.yml all --dev
+    command:
+      serve -c /etc/config/hydra/hydra-local-oidc4vci-config.yml all --dev
     environment:
       - DSN=postgres://hydra:secret@postgresd:5432/hydra?sslmode=disable&max_conns=20&max_idle_conns=4
       # ory/x configx: env vars override yaml config. dots -> underscores,
@@ -102,8 +105,8 @@ services:
 
   mock-issuer:
     build:
-     context: ./test/oidc4vci-external/mock-issuer
-     dockerfile: Dockerfile
+      context: ./test/oidc4vci-external/mock-issuer
+      dockerfile: Dockerfile
     ports:
       - "4448:4448"
     environment:

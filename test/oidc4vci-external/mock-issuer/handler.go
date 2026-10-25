@@ -527,11 +527,11 @@ func (h *Handler) handleGetOrUpdateOrDeleteCredentialConfig(w http.ResponseWrite
 // ── Admin: credential offers ──────────────────────────────────────────────────
 
 type createOfferRequest struct {
-	ID                         string       `json:"id"`
-	CredentialConfigurationIDs []string     `json:"credential_configuration_ids"`
-	Grants                     *OfferGrants `json:"grants,omitempty"`
-	ClientID                   string       `json:"client_id,omitempty"`
-	Scope                      string       `json:"scope,omitempty"`
+	ID                         string                 `json:"id"`
+	CredentialConfigurationIDs []string               `json:"credential_configuration_ids"`
+	Grants                     *OfferGrants           `json:"grants,omitempty"`
+	ClientID                   string                 `json:"client_id,omitempty"`
+	Scope                      string                 `json:"scope,omitempty"`
 	Claims                     map[string]interface{} `json:"claims,omitempty"`
 }
 

@@ -242,9 +242,9 @@ func mockIssuerServer(t *testing.T, hydraPublicURL, hydraAdminURL string) *httpt
 
 	mux.HandleFunc("GET /.well-known/openid-credential-issuer", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]interface{}{
-			"credential_issuer":   issuerURL,
-			"credential_endpoint": issuerURL + "/credential",
-			"nonce_endpoint":      issuerURL + "/nonce",
+			"credential_issuer":     issuerURL,
+			"credential_endpoint":   issuerURL + "/credential",
+			"nonce_endpoint":        issuerURL + "/nonce",
 			"authorization_servers": []string{hydraPublicURL},
 			"credential_configurations_supported": map[string]interface{}{
 				"TestCredential_JWT": map[string]interface{}{

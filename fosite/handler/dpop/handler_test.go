@@ -85,12 +85,16 @@ type mockDPoPConfig struct {
 	parURLs       []string
 }
 
-func (m *mockDPoPConfig) GetDPoPEnabled(_ context.Context) bool                       { return m.enabled }
-func (m *mockDPoPConfig) GetDPoPSigningAlgValuesSupported(_ context.Context) []string  { return m.algValues }
-func (m *mockDPoPConfig) GetDPoPNonceEnabled(_ context.Context) bool                   { return m.nonceEnabled }
-func (m *mockDPoPConfig) GetDPoPNonceLifespan(_ context.Context) time.Duration         { return m.nonceLifespan }
-func (m *mockDPoPConfig) GetDPoPProofMaxAge(_ context.Context) time.Duration           { return m.proofMaxAge }
-func (m *mockDPoPConfig) GetDPoPPARURLs(_ context.Context) []string                    { return m.parURLs }
+func (m *mockDPoPConfig) GetDPoPEnabled(_ context.Context) bool { return m.enabled }
+func (m *mockDPoPConfig) GetDPoPSigningAlgValuesSupported(_ context.Context) []string {
+	return m.algValues
+}
+func (m *mockDPoPConfig) GetDPoPNonceEnabled(_ context.Context) bool { return m.nonceEnabled }
+func (m *mockDPoPConfig) GetDPoPNonceLifespan(_ context.Context) time.Duration {
+	return m.nonceLifespan
+}
+func (m *mockDPoPConfig) GetDPoPProofMaxAge(_ context.Context) time.Duration { return m.proofMaxAge }
+func (m *mockDPoPConfig) GetDPoPPARURLs(_ context.Context) []string          { return m.parURLs }
 
 // mockDPoPNonceStorage implements dpop.DPoPNonceStorage for testing.
 type mockDPoPNonceStorage struct {
@@ -992,10 +996,10 @@ func TestProperty9_RefreshTokenDPoPBinding(t *testing.T) {
 		// **Validates: Requirements 5.1, 5.2, 5.3, 5.4**
 		rapid.Check(t, func(t *rapid.T) {
 			const (
-				scenarioPublicInitial          = 0 // Public client initial token → dpop_jkt_binding stored
-				scenarioConfidentialInitial     = 1 // Confidential client initial token → no dpop_jkt_binding
-				scenarioPublicRefreshSameKey    = 2 // Public client refresh with same key → accepted
-				scenarioPublicRefreshDiffKey    = 3 // Public client refresh with different key → invalid_dpop_proof
+				scenarioPublicInitial        = 0 // Public client initial token → dpop_jkt_binding stored
+				scenarioConfidentialInitial  = 1 // Confidential client initial token → no dpop_jkt_binding
+				scenarioPublicRefreshSameKey = 2 // Public client refresh with same key → accepted
+				scenarioPublicRefreshDiffKey = 3 // Public client refresh with different key → invalid_dpop_proof
 			)
 
 			scenario := rapid.IntRange(0, 3).Draw(t, "scenario")
@@ -1129,8 +1133,8 @@ func TestProperty9_RefreshTokenDPoPBinding(t *testing.T) {
 				ar := fosite.NewAccessRequest(session)
 				ar.Client = client
 				ar.Form = url.Values{
-					"dpop_proof":  {proofJWT},
-					"grant_type":  {"refresh_token"},
+					"dpop_proof": {proofJWT},
+					"grant_type": {"refresh_token"},
 				}
 
 				ctx := context.Background()
@@ -1166,8 +1170,8 @@ func TestProperty9_RefreshTokenDPoPBinding(t *testing.T) {
 				ar := fosite.NewAccessRequest(session)
 				ar.Client = client
 				ar.Form = url.Values{
-					"dpop_proof":  {proofJWT},
-					"grant_type":  {"refresh_token"},
+					"dpop_proof": {proofJWT},
+					"grant_type": {"refresh_token"},
 				}
 
 				ctx := context.Background()

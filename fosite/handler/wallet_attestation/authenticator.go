@@ -75,12 +75,12 @@ type Authenticator struct {
 
 // attestationClaims holds the claims from the Client Attestation JWT (draft-07 §5.1).
 type attestationClaims struct {
-	Issuer    string           `json:"iss"`
-	Subject   string           `json:"sub"`
+	Issuer    string               `json:"iss"`
+	Subject   string               `json:"sub"`
 	ExpiresAt *josejwt.NumericDate `json:"exp"`
 	IssuedAt  *josejwt.NumericDate `json:"iat,omitempty"`
 	NotBefore *josejwt.NumericDate `json:"nbf,omitempty"`
-	CNF       *cnfClaim        `json:"cnf"`
+	CNF       *cnfClaim            `json:"cnf"`
 }
 
 // cnfClaim represents the confirmation claim per RFC 7800.

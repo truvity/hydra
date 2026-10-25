@@ -217,9 +217,9 @@ func (c *Config) GetClientAuthenticationStrategy(ctx context.Context) fosite.Cli
 		// the Persister directly via deps so we don't depend on the fosite
 		// Storage interface carrying the JTI methods.
 		c.walletAttestationAuthenticator = &wallet_attestation.Authenticator{
-			Config:    c,
-			Store:     c.fositeInstance.Store,
-			JTIStore:  c.deps.Persister(),
+			Config:   c,
+			Store:    c.fositeInstance.Store,
+			JTIStore: c.deps.Persister(),
 			IssuerURL: func(ctx context.Context) string {
 				return c.deps.Config().IssuerURL(ctx).String()
 			},

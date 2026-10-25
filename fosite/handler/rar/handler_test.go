@@ -27,7 +27,7 @@ type mockRARConfig struct {
 	typesSupported []string
 }
 
-func (m *mockRARConfig) GetRAREnabled(_ context.Context) bool      { return m.enabled }
+func (m *mockRARConfig) GetRAREnabled(_ context.Context) bool            { return m.enabled }
 func (m *mockRARConfig) GetRARTypesSupported(_ context.Context) []string { return m.typesSupported }
 
 // newHandler creates a RARHandler with the given supported types.
@@ -57,7 +57,6 @@ func genNonEmptyAlphaString() *rapid.Generator[string] {
 func genSupportedTypes() *rapid.Generator[[]string] {
 	return rapid.SliceOfN(genNonEmptyAlphaString(), 1, 5)
 }
-
 
 // genValidObject generates a valid authorization_details object with a type from supportedTypes.
 // If the type is "openid_credential", it includes a non-empty credential_configuration_id.
@@ -156,7 +155,6 @@ func genMissingCredConfigIDPayload() *rapid.Generator[string] {
 		return string(data)
 	})
 }
-
 
 // --- Property Tests ---
 
