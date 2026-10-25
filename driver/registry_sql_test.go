@@ -24,6 +24,7 @@ import (
 	"github.com/ory/hydra/v2/client"
 	"github.com/ory/hydra/v2/driver/config"
 	"github.com/ory/hydra/v2/fosite"
+	"github.com/ory/hydra/v2/fosite/handler/preauth"
 	"github.com/ory/hydra/v2/persistence/sql"
 	"github.com/ory/x/configx"
 	"github.com/ory/x/dbal"
@@ -198,7 +199,15 @@ func TestDbUnknownTableColumns(t *testing.T) {
 
 		actual, err := getClients(t.Context(), reg)
 		require.NoError(t, err)
-		assert.Len(t, actual, 1)
+		// The OIDC4VCI migrations seed the anonymous pre-authorized-code client;
+		// only the client this test created matters here.
+		ids := make([]string, 0, len(actual))
+		for _, c := range actual {
+			if c.ID != preauth.AnonymousClientID {
+				ids = append(ids, c.ID)
+			}
+		}
+		assert.Equal(t, []string{cl.ID}, ids)
 	})
 }
 
