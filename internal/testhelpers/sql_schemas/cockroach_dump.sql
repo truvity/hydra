@@ -1,4 +1,4 @@
--- migrations hash: 36ad8390f65c43551e28df0dcf92b0fdeb823b774eecda791f5979deafce2f6cc6ff57fccdfa41cbaa4403fd4ced8a9dfd7b725d1bb51fd6b0fabdccd51338aa
+-- migrations hash: 3094a1c6901bee8340cfe00e35ffb0db84d9dc6c212dc3338e4bb3ccc23f603a6d86387445a3fb5abed295494c13fa27d28ad4aaf61df68191d1600a89e4c7df
 
 CREATE TABLE public.schema_migration (
 	version VARCHAR(48) NOT NULL,
@@ -174,6 +174,9 @@ CREATE TABLE public.hydra_oauth2_flow (
 	device_handled_at TIMESTAMP NULL,
 	device_error VARCHAR(2048) NULL,
 	expires_at TIMESTAMP NULL AS (IF(consent_remember_for > 0:::INT8, requested_at + ('00:00:01':::INTERVAL * consent_remember_for), NULL)) VIRTUAL,
+	authorization_details JSONB NULL,
+	issuer_state VARCHAR(4096) NULL DEFAULT '':::STRING,
+	consent_authorization_details JSONB NULL,
 	CONSTRAINT hydra_oauth2_flow_pkey PRIMARY KEY (login_challenge ASC),
 	UNIQUE INDEX hydra_oauth2_flow_consent_challenge_idx (consent_challenge_id ASC),
 	INDEX hydra_oauth2_flow_client_id_subject_idx (client_id ASC, nid ASC, subject ASC),
@@ -336,6 +339,53 @@ CREATE TABLE public.hydra_oauth2_device_auth_codes (
 	INDEX hydra_oauth2_device_auth_codes_client_id_idx (client_id ASC, nid ASC),
 	INDEX hydra_oauth2_device_auth_codes_challenge_id_idx (challenge_id ASC),
 	UNIQUE INDEX hydra_oauth2_device_auth_codes_user_code_signature_idx (nid ASC, user_code_signature ASC)
+);
+CREATE TABLE public.hydra_oauth2_dpop_jti (
+	jti VARCHAR(255) NOT NULL,
+	nid UUID NOT NULL,
+	used_at TIMESTAMP NOT NULL DEFAULT current_timestamp():::TIMESTAMP,
+	expires_at TIMESTAMP NOT NULL,
+	CONSTRAINT hydra_oauth2_dpop_jti_pkey PRIMARY KEY (jti ASC, nid ASC),
+	INDEX idx_dpop_jti_expires_at (nid ASC, expires_at ASC)
+);
+CREATE TABLE public.hydra_oauth2_preauth_code (
+	signature VARCHAR(255) NOT NULL,
+	nid UUID NOT NULL,
+	request_id VARCHAR(255) NOT NULL,
+	client_id VARCHAR(255) NULL,
+	requested_scope JSONB NULL,
+	granted_scope JSONB NULL,
+	credential_configuration_ids JSONB NOT NULL,
+	tx_code_hash VARCHAR(255) NULL,
+	tx_code_input_mode VARCHAR(10) NULL,
+	tx_code_length INT8 NULL,
+	session_data JSONB NOT NULL,
+	redeemed BOOL NOT NULL DEFAULT false,
+	requested_at TIMESTAMP NOT NULL,
+	expires_at TIMESTAMP NOT NULL,
+	CONSTRAINT hydra_oauth2_preauth_code_pkey PRIMARY KEY (signature ASC),
+	INDEX idx_preauth_code_nid (nid ASC),
+	INDEX idx_preauth_code_expires_at (nid ASC, expires_at ASC)
+);
+CREATE TABLE public.hydra_oauth2_par (
+	signature VARCHAR(255) NOT NULL,
+	request_id VARCHAR(40) NOT NULL,
+	requested_at TIMESTAMP NOT NULL DEFAULT current_timestamp():::TIMESTAMP,
+	client_id VARCHAR(255) NOT NULL,
+	scope STRING NOT NULL,
+	granted_scope STRING NOT NULL,
+	form_data STRING NOT NULL,
+	session_data STRING NOT NULL,
+	subject VARCHAR(255) NOT NULL DEFAULT '':::STRING,
+	active BOOL NOT NULL DEFAULT true,
+	requested_audience STRING NULL DEFAULT '':::STRING,
+	granted_audience STRING NULL DEFAULT '':::STRING,
+	challenge_id VARCHAR(40) NULL,
+	nid CHAR(36) NOT NULL,
+	expires_at TIMESTAMP NULL,
+	CONSTRAINT hydra_oauth2_par_pkey PRIMARY KEY (signature ASC),
+	INDEX idx_par_nid (nid ASC),
+	INDEX idx_par_expires_at (nid ASC, expires_at ASC)
 );
 ALTER TABLE public.hydra_client ADD CONSTRAINT hydra_client_nid_fk_idx FOREIGN KEY (nid) REFERENCES public.networks(id) ON DELETE CASCADE ON UPDATE RESTRICT;
 ALTER TABLE public.hydra_jwk ADD CONSTRAINT hydra_jwk_nid_fk_idx FOREIGN KEY (nid) REFERENCES public.networks(id) ON DELETE CASCADE ON UPDATE RESTRICT;

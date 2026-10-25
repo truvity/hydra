@@ -1,4 +1,4 @@
--- migrations hash: 36ad8390f65c43551e28df0dcf92b0fdeb823b774eecda791f5979deafce2f6cc6ff57fccdfa41cbaa4403fd4ced8a9dfd7b725d1bb51fd6b0fabdccd51338aa
+-- migrations hash: 3094a1c6901bee8340cfe00e35ffb0db84d9dc6c212dc3338e4bb3ccc23f603a6d86387445a3fb5abed295494c13fa27d28ad4aaf61df68191d1600a89e4c7df
 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -212,6 +212,19 @@ CREATE TABLE `hydra_oauth2_device_auth_codes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+DROP TABLE IF EXISTS `hydra_oauth2_dpop_jti`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `hydra_oauth2_dpop_jti` (
+  `jti` varchar(255) NOT NULL,
+  `nid` char(36) NOT NULL,
+  `used_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` timestamp NOT NULL,
+  PRIMARY KEY (`jti`,`nid`),
+  KEY `idx_dpop_jti_expires_at` (`nid`,`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `hydra_oauth2_flow`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -263,6 +276,9 @@ CREATE TABLE `hydra_oauth2_flow` (
   `device_handled_at` timestamp NULL DEFAULT NULL,
   `device_error` varchar(2048) DEFAULT NULL,
   `expires_at` timestamp GENERATED ALWAYS AS (if((`consent_remember_for` > 0),(`requested_at` + interval `consent_remember_for` second),NULL)) VIRTUAL NULL,
+  `authorization_details` json DEFAULT NULL,
+  `issuer_state` varchar(4096) DEFAULT '',
+  `consent_authorization_details` json DEFAULT NULL,
   PRIMARY KEY (`login_challenge`),
   UNIQUE KEY `hydra_oauth2_flow_consent_challenge_idx` (`consent_challenge_id`),
   UNIQUE KEY `hydra_oauth2_flow_device_challenge_idx` (`device_challenge_id`),
@@ -365,6 +381,31 @@ CREATE TABLE `hydra_oauth2_oidc` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+DROP TABLE IF EXISTS `hydra_oauth2_par`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `hydra_oauth2_par` (
+  `signature` varchar(255) NOT NULL,
+  `request_id` varchar(40) NOT NULL,
+  `requested_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `client_id` varchar(255) NOT NULL,
+  `scope` text NOT NULL,
+  `granted_scope` text NOT NULL,
+  `form_data` text NOT NULL,
+  `session_data` text NOT NULL,
+  `subject` varchar(255) NOT NULL DEFAULT '',
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `requested_audience` text DEFAULT (_utf8mb4''),
+  `granted_audience` text DEFAULT (_utf8mb4''),
+  `challenge_id` varchar(40) DEFAULT NULL,
+  `nid` char(36) NOT NULL,
+  `expires_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`signature`),
+  KEY `idx_par_nid` (`nid`),
+  KEY `idx_par_expires_at` (`nid`,`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 DROP TABLE IF EXISTS `hydra_oauth2_pkce`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -392,6 +433,30 @@ CREATE TABLE `hydra_oauth2_pkce` (
   CONSTRAINT `hydra_oauth2_pkce_challenge_id_fk` FOREIGN KEY (`challenge_id`) REFERENCES `hydra_oauth2_flow` (`consent_challenge_id`) ON DELETE CASCADE,
   CONSTRAINT `hydra_oauth2_pkce_client_id_fk` FOREIGN KEY (`client_id`, `nid`) REFERENCES `hydra_client` (`id`, `nid`) ON DELETE CASCADE,
   CONSTRAINT `hydra_oauth2_pkce_nid_fk_idx` FOREIGN KEY (`nid`) REFERENCES `networks` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+DROP TABLE IF EXISTS `hydra_oauth2_preauth_code`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `hydra_oauth2_preauth_code` (
+  `signature` varchar(255) NOT NULL,
+  `nid` char(36) NOT NULL,
+  `request_id` varchar(255) NOT NULL,
+  `client_id` varchar(255) DEFAULT NULL,
+  `requested_scope` json DEFAULT NULL,
+  `granted_scope` json DEFAULT NULL,
+  `credential_configuration_ids` json NOT NULL,
+  `tx_code_hash` varchar(255) DEFAULT NULL,
+  `tx_code_input_mode` varchar(10) DEFAULT NULL,
+  `tx_code_length` int DEFAULT NULL,
+  `session_data` json NOT NULL,
+  `redeemed` tinyint(1) NOT NULL DEFAULT '0',
+  `requested_at` timestamp NOT NULL,
+  `expires_at` timestamp NOT NULL,
+  PRIMARY KEY (`signature`),
+  KEY `idx_preauth_code_nid` (`nid`),
+  KEY `idx_preauth_code_expires_at` (`nid`,`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

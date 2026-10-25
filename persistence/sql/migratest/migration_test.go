@@ -24,6 +24,7 @@ import (
 	"github.com/ory/hydra/v2/client"
 	"github.com/ory/hydra/v2/consent"
 	"github.com/ory/hydra/v2/flow"
+	"github.com/ory/hydra/v2/fosite/handler/preauth"
 	testhelpersuuid "github.com/ory/hydra/v2/internal/testhelpers/uuid"
 	"github.com/ory/hydra/v2/jwk"
 	"github.com/ory/hydra/v2/oauth2"
@@ -115,8 +116,22 @@ func TestMigrations(t *testing.T) {
 
 			t.Run("suite=fixtures", func(t *testing.T) {
 				t.Run("case=hydra_client", func(t *testing.T) {
-					cs := []client.Client{}
-					require.NoError(t, c.All(&cs))
+					all := []client.Client{}
+					require.NoError(t, c.All(&all))
+
+					// The OIDC4VCI anonymous-client migration seeds one synthetic
+					// client per network. Check that it is there, then compare the
+					// fixture clients only.
+					cs := make([]client.Client, 0, len(all))
+					seeded := 0
+					for _, c := range all {
+						if c.ID == preauth.AnonymousClientID {
+							seeded++
+							continue
+						}
+						cs = append(cs, c)
+					}
+					require.Equal(t, 1, seeded, "expected the OIDC4VCI anonymous client to be seeded once")
 					require.Len(t, cs, 20)
 					for _, c := range cs {
 						if s := time.Since(c.CreatedAt); s > 0 && s < 10*time.Minute {

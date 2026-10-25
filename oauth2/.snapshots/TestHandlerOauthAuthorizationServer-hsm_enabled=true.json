@@ -23,6 +23,7 @@
   ],
   "issuer": "http://hydra.localhost",
   "jwks_uri": "http://hydra.localhost/.well-known/jwks.json",
+  "pushed_authorization_request_endpoint": "http://hydra.localhost/oauth2/par",
   "registration_endpoint": "http://client-register/registration",
   "request_object_signing_alg_values_supported": [
     "none",

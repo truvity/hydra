@@ -38,5 +38,7 @@
   },
   "sa": {
     "session_access_token-0010": "0010"
-  }
+  },
+  "ad": null,
+  "cad": null
 }
