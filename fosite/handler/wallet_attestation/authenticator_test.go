@@ -1236,7 +1236,8 @@ func TestProperty8_RefreshTokenBindingRoundTrip(t *testing.T) {
 			expectedThumbprint, err := computeJWKThumbprint(cnfJWK)
 			require.NoError(t, err)
 
-			// Simulate PopulateTokenEndpointResponse storing the thumbprint.
+			// The thumbprint is stored at token validation, before the hooks run
+			// and the grant-type handler persists the session.
 			session := &fosite.DefaultSession{
 				Extra: make(map[string]interface{}),
 			}
@@ -1250,14 +1251,57 @@ func TestProperty8_RefreshTokenBindingRoundTrip(t *testing.T) {
 				form:       form,
 			}
 
-			err = handler.PopulateTokenEndpointResponse(t.Context(), requester, &mockAccessResponder{})
+			err = handler.HandleTokenEndpointRequest(t.Context(), requester)
 			require.NoError(t, err)
 
 			// Verify the stored thumbprint matches.
-			storedJKT, ok := session.Extra["wallet_attestation_cnf_jkt"].(string)
-			require.True(t, ok, "wallet_attestation_cnf_jkt should be stored in session")
+			storedJKT, ok := session.Extra[WIACnfExtraKey].(string)
+			require.True(t, ok, "wia_cnf should be stored in session")
 			assert.Equal(t, expectedThumbprint, storedJKT)
+
+			// PopulateTokenEndpointResponse runs after the session is persisted
+			// and must not be where the thumbprint first appears.
+			delete(session.Extra, WIACnfExtraKey)
+			require.NoError(t, handler.PopulateTokenEndpointResponse(t.Context(), requester, &mockAccessResponder{}))
+			assert.NotContains(t, session.Extra, WIACnfExtraKey)
 		})
+	})
+
+	t.Run("case=no wallet attestation leaves the session alone", func(t *testing.T) {
+		t.Parallel()
+
+		session := &fosite.DefaultSession{Extra: map[string]interface{}{"offer_id": "abc"}}
+		requester := &mockAccessRequester{
+			grantTypes: fosite.Arguments{"authorization_code"},
+			client:     &mockClient{id: testClientID, tokenEndpointAuthMethod: "attest_jwt_client_auth"},
+			session:    session,
+			form:       url.Values{},
+		}
+
+		require.NoError(t, handler.HandleTokenEndpointRequest(t.Context(), requester))
+		assert.Equal(t, map[string]interface{}{"offer_id": "abc"}, session.Extra)
+	})
+
+	t.Run("case=refresh keeps the stored wia_cnf", func(t *testing.T) {
+		t.Parallel()
+
+		cnfKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err)
+
+		cnfJWK := &jose.JSONWebKey{Key: &cnfKey.PublicKey, Algorithm: "ES256"}
+		jkt, err := computeJWKThumbprint(cnfJWK)
+		require.NoError(t, err)
+
+		session := &fosite.DefaultSession{Extra: map[string]interface{}{WIACnfExtraKey: jkt}}
+		requester := &mockAccessRequester{
+			grantTypes: fosite.Arguments{"refresh_token"},
+			client:     &mockClient{id: testClientID, tokenEndpointAuthMethod: "attest_jwt_client_auth"},
+			session:    session,
+			form:       cnfJWKForm(t, cnfJWK),
+		}
+
+		require.NoError(t, handler.HandleTokenEndpointRequest(t.Context(), requester))
+		assert.Equal(t, jkt, session.Extra[WIACnfExtraKey])
 	})
 
 	t.Run("case=same key accepted on refresh", func(t *testing.T) {
@@ -1274,7 +1318,7 @@ func TestProperty8_RefreshTokenBindingRoundTrip(t *testing.T) {
 
 			session := &fosite.DefaultSession{
 				Extra: map[string]interface{}{
-					"wallet_attestation_cnf_jkt": jkt,
+					WIACnfExtraKey: jkt,
 				},
 			}
 
@@ -1305,7 +1349,7 @@ func TestProperty8_RefreshTokenBindingRoundTrip(t *testing.T) {
 
 			session := &fosite.DefaultSession{
 				Extra: map[string]interface{}{
-					"wallet_attestation_cnf_jkt": originalJKT,
+					WIACnfExtraKey: originalJKT,
 				},
 			}
 

@@ -16,10 +16,16 @@ import (
 	"github.com/ory/hydra/v2/fosite"
 )
 
+// WIACnfExtraKey is the session extra member holding the RFC 7638 thumbprint
+// of the Wallet Attestation's cnf.jwk (the Client Instance Key). It travels
+// with the access token session, so the token hook request and the
+// introspection ext carry it, and it is the refresh token binding.
+const WIACnfExtraKey = "wia_cnf"
+
 // RefreshBindingHandler is a lightweight TokenEndpointHandler that stores the
-// Client Instance Key thumbprint in the session when a refresh token is issued
-// via Wallet Attestation, and verifies it on refresh. This is needed because
-// the ClientAuthenticationStrategy function does not have access to the session.
+// Client Instance Key thumbprint in the session when a token is issued via
+// Wallet Attestation, and verifies it on refresh. This is needed because the
+// ClientAuthenticationStrategy function does not have access to the session.
 type RefreshBindingHandler struct {
 	Config WalletAttestationConfigProvider
 }
@@ -41,14 +47,20 @@ func (h *RefreshBindingHandler) CanSkipClientAuth(_ context.Context, _ fosite.Ac
 	return false
 }
 
-// HandleTokenEndpointRequest verifies refresh token key binding on
-// grant_type=refresh_token requests. It reads the stored
-// wallet_attestation_cnf_jkt from the session and compares it against the
-// current request's cnf.jwk thumbprint (transported via the request form by
-// the authenticator).
+// HandleTokenEndpointRequest stores the Client Instance Key thumbprint as
+// wia_cnf on every grant except refresh_token, and on refresh_token compares
+// the stored wia_cnf against the current request's cnf.jwk thumbprint
+// (transported via the request form by the authenticator).
+//
+// The thumbprint is stored here, at token validation, and not in
+// PopulateTokenEndpointResponse: the access request hooks (the token hook)
+// run between the two phases and the grant-type handler persists the session
+// in PopulateTokenEndpointResponse, so only a value set now reaches the token
+// hook, the introspection ext and the stored refresh token session. The DPoP
+// handler stores cnf.jkt at the same point for the same reason.
 func (h *RefreshBindingHandler) HandleTokenEndpointRequest(ctx context.Context, requester fosite.AccessRequester) error {
 	if !requester.GetGrantTypes().ExactOne("refresh_token") {
-		return nil
+		return h.storeThumbprint(requester)
 	}
 
 	// Read the cnf.jwk from the request form (set by the authenticator).
@@ -69,7 +81,7 @@ func (h *RefreshBindingHandler) HandleTokenEndpointRequest(ctx context.Context, 
 		return nil
 	}
 
-	storedJKT, ok := extra["wallet_attestation_cnf_jkt"].(string)
+	storedJKT, ok := extra[WIACnfExtraKey].(string)
 	if !ok || storedJKT == "" {
 		// No stored binding — this is the first issuance or binding was not set.
 		return nil
@@ -96,10 +108,15 @@ func (h *RefreshBindingHandler) HandleTokenEndpointRequest(ctx context.Context, 
 	return nil
 }
 
-// PopulateTokenEndpointResponse computes the JWK thumbprint of the current
-// cnf.jwk and stores it in session.Extra["wallet_attestation_cnf_jkt"] for
-// future refresh token binding checks.
-func (h *RefreshBindingHandler) PopulateTokenEndpointResponse(ctx context.Context, requester fosite.AccessRequester, _ fosite.AccessResponder) error {
+// PopulateTokenEndpointResponse does nothing: the thumbprint is stored by
+// HandleTokenEndpointRequest, before the session is persisted.
+func (h *RefreshBindingHandler) PopulateTokenEndpointResponse(context.Context, fosite.AccessRequester, fosite.AccessResponder) error {
+	return nil
+}
+
+// storeThumbprint sets wia_cnf in the session extra when the request was
+// authenticated with a Wallet Attestation.
+func (h *RefreshBindingHandler) storeThumbprint(requester fosite.AccessRequester) error {
 	// Read the cnf.jwk from the request form (set by the authenticator).
 	cnfKey, err := getCNFKeyFromForm(requester.GetRequestForm())
 	if err != nil || cnfKey == nil {
@@ -121,7 +138,11 @@ func (h *RefreshBindingHandler) PopulateTokenEndpointResponse(ctx context.Contex
 	}
 
 	extra := session.GetExtraClaims()
-	extra["wallet_attestation_cnf_jkt"] = jkt
+	if extra == nil {
+		return nil
+	}
+
+	extra[WIACnfExtraKey] = jkt
 
 	return nil
 }

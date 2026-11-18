@@ -92,15 +92,19 @@ func setupAuthCodeHydra(t *testing.T) *authCodeEnv {
 	reg.Config().MustSet(ctx, config.KeyLoginURL, "http://placeholder/login")
 	reg.Config().MustSet(ctx, config.KeyConsentURL, "http://placeholder/consent")
 
-	adminClient := hydra.NewAPIClient(hydra.NewConfiguration())
-	adminClient.GetConfig().Servers = hydra.ServerConfigurations{{URL: adminTS.URL}}
-
 	return &authCodeEnv{
 		publicURL:   publicTS.URL,
 		adminURL:    adminTS.URL,
 		reg:         reg,
-		adminClient: adminClient,
+		adminClient: setupAuthCodeHydraAdminClient(adminTS.URL),
 	}
+}
+
+func setupAuthCodeHydraAdminClient(adminURL string) *hydra.APIClient {
+	adminClient := hydra.NewAPIClient(hydra.NewConfiguration())
+	adminClient.GetConfig().Servers = hydra.ServerConfigurations{{URL: adminURL}}
+
+	return adminClient
 }
 
 func (e *authCodeEnv) createClient(t *testing.T, callbackURL string) *client.Client {
