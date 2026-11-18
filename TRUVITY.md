@@ -29,7 +29,10 @@ as few files as possible.
 - **HAIP profile enforcement** — DPoP + PAR + PKCE S256 + the RFC 9207 `iss`
   parameter, switched on by one config key
 - **Wallet attestation** — `attest_jwt_client_auth` per
-  draft-ietf-oauth-attestation-based-client-auth-07
+  draft-ietf-oauth-attestation-based-client-auth-07; the RFC 7638 thumbprint of the
+  attestation's `cnf.jwk` is stored as `wia_cnf` in the access token session
+  (visible to the token hook and in the introspection `ext`) and binds refresh
+  tokens to the Client Instance Key
 - **Discovery metadata** advertising all of the above
 
 Every one of these is additive: no upstream behaviour is removed or changed, and
